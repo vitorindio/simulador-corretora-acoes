@@ -5,6 +5,36 @@ const jwt = require('jsonwebtoken');
 const db = require('../config/database');
 const { verifyToken } = require('../middleware/auth');
 
+/* Documentação dos endpoints de autenticação (para a entrega do backend + banco):
+
+   /login (POST)
+     Parâmetros (Body): email (string, obrigatório), senha (string, obrigatório)
+     Retorno (JSON): { token: string } (sucesso) ou { mensagem: string } (falha)
+
+   /logout (POST)
+     Parâmetros (Headers): Authorization: Bearer <token> (obrigatório)
+     Retorno (JSON): { mensagem: "Logout realizado com sucesso" } (sucesso) ou { mensagem: string } (falha)
+
+   /criar-conta (POST)
+     Parâmetros (Body): email (string, obrigatório), senha (string, obrigatório)
+     Retorno (JSON): { mensagem: "Conta criada com sucesso", idUsuario: integer } (sucesso) ou { mensagem: string } (falha)
+
+   /token-nova-senha (POST)
+     Parâmetros (Body): email (string, obrigatório)
+     Retorno (JSON): { mensagem: "Token de recuperação de senha enviado para o seu email" } (sucesso) ou { mensagem: string } (falha)
+
+   /recuperar-senha (POST)
+     Parâmetros (Body): token (string, obrigatório), novaSenha (string, obrigatório)
+     Retorno (JSON): { mensagem: "Senha redefinida com sucesso" } (sucesso) ou { mensagem: string } (falha)
+
+   /trocar-senha (POST)
+     Parâmetros (Headers): Authorization: Bearer <token> (obrigatório)
+     Parâmetros (Body): senhaAtual (string, obrigatório), novaSenha (string, obrigatório)
+     Retorno (JSON): { mensagem: "Senha alterada com sucesso" } (sucesso) ou { mensagem: string } (falha)
+
+   Obs.: Esses endpoints já estão implementados (ou em "não implementado") neste arquivo.
+*/
+
 // Login
 router.post('/login', async (req, res) => {
   try {
