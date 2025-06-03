@@ -1,0 +1,25 @@
+# Ignorar node_modules
+node_modules/
+
+# Ignorar arquivos de ambiente (ex: .env, .env.local, etc)
+.env
+.env.local
+.env.development
+.env.production
+
+# Ignorar logs (ex: npm-debug, yarn-debug, etc)
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Ignorar pasta de build (ex: dist, build, etc)
+/dist
+/build
+
+# Ignorar arquivos de sistema (ex: .DS_Store, Thumbs.db, etc)
+.DS_Store
+Thumbs.db
+
+# Ignorar arquivos de IDE (ex: .vscode, .idea, etc)
+.vscode
+.idea
