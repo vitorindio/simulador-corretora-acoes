@@ -35,11 +35,12 @@ const verifyToken = (req, res, next) => {
 const checkUserBlocked = async (req, res, next) => {
   try {
     const db = require('../config/database');
-    const [user] = await db.query(
+    const users = await db.query(
       'SELECT numero_falhas_login FROM usuario WHERE id = ?',
       [req.userId]
     );
 
+    const user = users[0];
     if (user && user.numero_falhas_login >= 3) {
       return res.status(403).json({ message: 'Usuário bloqueado por excesso de tentativas de login' });
     }

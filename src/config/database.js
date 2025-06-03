@@ -28,8 +28,8 @@ async function testConnection() {
 // Função para executar queries
 async function query(sql, params) {
   try {
-    const [results] = await pool.execute(sql, params);
-    return results;
+    const results = await pool.execute(sql, params);
+    return results[0]; // Retorna apenas o array de resultados
   } catch (error) {
     console.error('Erro ao executar query:', error);
     throw error;

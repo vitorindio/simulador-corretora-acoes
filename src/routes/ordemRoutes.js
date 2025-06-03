@@ -20,7 +20,7 @@ router.post('/compra', verifyToken, async (req, res) => {
       return res.status(400).json({ message: 'Preço de referência deve ser maior que zero' });
     }
     // Salva ordem
-    const [result] = await db.query(
+    const result = await db.query(
       'INSERT INTO ordem_compra (id_usuario, data_hora, ticker, quantidade, modo, preco_referencia) VALUES (?, NOW(), ?, ?, ?, ?)',
       [req.userId, ticker, quantidade, modo, precoReferencia || null]
     );
@@ -36,7 +36,7 @@ router.post('/compra/:id/executar', verifyToken, async (req, res) => {
   try {
     const { id } = req.params;
     // Busca ordem
-    const [ordens] = await db.query(
+    const ordens = await db.query(
       'SELECT * FROM ordem_compra WHERE id = ? AND id_usuario = ?',
       [id, req.userId]
     );
@@ -90,7 +90,7 @@ router.post('/venda', verifyToken, async (req, res) => {
       return res.status(400).json({ message: 'Preço de repasse deve ser maior que zero' });
     }
     // Salva ordem
-    const [result] = await db.query(
+    const result = await db.query(
       'INSERT INTO ordem_venda (id_usuario, data_hora, ticker, quantidade, modo, preco_repasse) VALUES (?, NOW(), ?, ?, ?, ?)',
       [req.userId, ticker, quantidade, modo, precoRepasse || null]
     );
@@ -106,7 +106,7 @@ router.post('/venda/:id/executar', verifyToken, async (req, res) => {
   try {
     const { id } = req.params;
     // Busca ordem
-    const [ordens] = await db.query(
+    const ordens = await db.query(
       'SELECT * FROM ordem_venda WHERE id = ? AND id_usuario = ?',
       [id, req.userId]
     );

@@ -5,61 +5,42 @@ const jwt = require('jsonwebtoken');
 const db = require('../config/database');
 const { verifyToken } = require('../middleware/auth');
 
-/* Documentação dos endpoints de autenticação (para a entrega do backend + banco):
-
-   /login (POST)
-     Parâmetros (Body): email (string, obrigatório), senha (string, obrigatório)
-     Retorno (JSON): { token: string } (sucesso) ou { mensagem: string } (falha)
-
-   /logout (POST)
-     Parâmetros (Headers): Authorization: Bearer <token> (obrigatório)
-     Retorno (JSON): { mensagem: "Logout realizado com sucesso" } (sucesso) ou { mensagem: string } (falha)
-
-   /criar-conta (POST)
-     Parâmetros (Body): email (string, obrigatório), senha (string, obrigatório)
-     Retorno (JSON): { mensagem: "Conta criada com sucesso", idUsuario: integer } (sucesso) ou { mensagem: string } (falha)
-
-   /token-nova-senha (POST)
-     Parâmetros (Body): email (string, obrigatório)
-     Retorno (JSON): { mensagem: "Token de recuperação de senha enviado para o seu email" } (sucesso) ou { mensagem: string } (falha)
-
-   /recuperar-senha (POST)
-     Parâmetros (Body): token (string, obrigatório), novaSenha (string, obrigatório)
-     Retorno (JSON): { mensagem: "Senha redefinida com sucesso" } (sucesso) ou { mensagem: string } (falha)
-
-   /trocar-senha (POST)
-     Parâmetros (Headers): Authorization: Bearer <token> (obrigatório)
-     Parâmetros (Body): senhaAtual (string, obrigatório), novaSenha (string, obrigatório)
-     Retorno (JSON): { mensagem: "Senha alterada com sucesso" } (sucesso) ou { mensagem: string } (falha)
-
-   Obs.: Esses endpoints já estão implementados (ou em "não implementado") neste arquivo.
-*/
-
 // Login
 router.post('/login', async (req, res) => {
   try {
     const { email, senha } = req.body;
+    console.log('1. Tentativa de login para email:', email);
+    console.log('2. Senha fornecida:', senha);
 
     // Busca o usuário
-    const [users] = await db.query(
+    const users = await db.query(
       'SELECT id, email, senha_hash, numero_falhas_login FROM usuario WHERE email = ?',
       [email]
     );
+    console.log('3. Resultado da query:', JSON.stringify(users, null, 2));
 
     const user = users[0];
+    console.log('4. Usuário selecionado:', JSON.stringify(user, null, 2));
 
     // Verifica se o usuário existe
     if (!user) {
+      console.log('5. Usuário não encontrado');
       return res.status(400).json({ message: 'Credenciais inválidas' });
     }
 
     // Verifica se o usuário está bloqueado
     if (user.numero_falhas_login >= 3) {
+      console.log('6. Usuário bloqueado por excesso de tentativas');
       return res.status(403).json({ message: 'Usuário bloqueado por excesso de tentativas de login' });
     }
 
     // Verifica a senha
+    console.log('7. Comparando senhas:');
+    console.log('   - Senha fornecida:', senha);
+    console.log('   - Hash armazenado:', user.senha_hash);
     const senhaValida = await bcrypt.compare(senha, user.senha_hash);
+    console.log('8. Senha válida?', senhaValida);
+
     if (!senhaValida) {
       // Incrementa o contador de falhas
       await db.query(
@@ -107,33 +88,52 @@ router.post('/logout', verifyToken, (req, res) => {
 router.post('/criar-conta', async (req, res) => {
   try {
     const { email, senha } = req.body;
+    console.log('1. Tentativa de criar conta para email:', email);
 
     // Verifica se o email já existe
-    const [existingUsers] = await db.query(
-      'SELECT id FROM usuario WHERE email = ?',
-      [email]
-    );
+    const checkQuery = await db.query('SELECT id FROM usuario WHERE email = ?', [email]);
+    console.log('2. Resultado da verificação:', JSON.stringify(checkQuery, null, 2));
 
-    if (existingUsers.length > 0) {
+    if (checkQuery[0] && checkQuery[0].length > 0) {
       return res.status(400).json({ message: 'Email já cadastrado' });
     }
 
     // Criptografa a senha
     const senhaHash = await bcrypt.hash(senha, 10);
+    console.log('3. Senha criptografada gerada');
 
     // Cria o usuário
-    const [result] = await db.query(
+    const insertResult = await db.query(
       'INSERT INTO usuario (email, senha_hash, numero_falhas_login) VALUES (?, ?, 0)',
       [email, senhaHash]
     );
+    console.log('4. Resultado da inserção:', insertResult);
+
+    // O resultado da inserção contém o insertId
+    if (!insertResult || !insertResult.insertId) {
+      throw new Error('Não foi possível recuperar o ID do usuário criado');
+    }
 
     res.status(201).json({
       message: 'Conta criada com sucesso',
-      userId: result.insertId
+      userId: insertResult.insertId
     });
+
   } catch (error) {
-    console.error('Erro ao criar conta:', error);
-    res.status(500).json({ message: 'Erro interno do servidor' });
+    console.error('Erro detalhado:', {
+      message: error.message,
+      code: error.code,
+      stack: error.stack
+    });
+
+    if (error.code === 'ER_DUP_ENTRY') {
+      return res.status(400).json({ message: 'Email já cadastrado' });
+    }
+
+    res.status(500).json({ 
+      message: 'Erro interno do servidor',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
   }
 });
 
@@ -143,7 +143,7 @@ router.post('/token-nova-senha', async (req, res) => {
     const { email } = req.body;
 
     // Verifica se o email existe
-    const [users] = await db.query(
+    const users = await db.query(
       'SELECT id FROM usuario WHERE email = ?',
       [email]
     );
@@ -180,7 +180,7 @@ router.post('/recuperar-senha', async (req, res) => {
     const { token, novaSenha } = req.body;
 
     // Verifica se o token existe e é válido
-    const [users] = await db.query(
+    const users = await db.query(
       'SELECT id FROM usuario WHERE token_rec_senha = ? AND data_token_rs > NOW()',
       [token]
     );
@@ -211,7 +211,7 @@ router.post('/trocar-senha', verifyToken, async (req, res) => {
     const { senhaAtual, novaSenha } = req.body;
 
     // Busca o usuário
-    const [users] = await db.query(
+    const users = await db.query(
       'SELECT senha_hash FROM usuario WHERE id = ?',
       [req.userId]
     );

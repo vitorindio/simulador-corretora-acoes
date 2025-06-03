@@ -2,7 +2,7 @@ USE simulador_corretora;
 
 -- Inserir usuário de teste (senha: 123456)
 INSERT INTO usuario (email, senha_hash, numero_falhas_login, ultima_hora_negociacao) VALUES
-('teste@email.com', '$2a$10$X7UrH5YxX5YxX5YxX5YxX.5YxX5YxX5YxX5YxX5YxX5YxX5YxX', 0, '14:00:00');
+('teste@email.com', '$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy', 0, '14:00:00');
 
 -- Inserir algumas ações de interesse
 INSERT INTO acoes_interesse (id_usuario, ticker, ordem) VALUES

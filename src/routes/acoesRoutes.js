@@ -11,7 +11,7 @@ router.post('/interesse', verifyToken, async (req, res) => {
       return res.status(400).json({ message: 'Ticker é obrigatório' });
     }
     // Verifica se já existe
-    const [existe] = await db.query(
+    const existe = await db.query(
       'SELECT id FROM acoes_interesse WHERE id_usuario = ? AND ticker = ?',
       [req.userId, ticker]
     );
@@ -19,7 +19,7 @@ router.post('/interesse', verifyToken, async (req, res) => {
       return res.status(400).json({ message: 'Ação já existe na lista de interesse' });
     }
     // Descobre a próxima ordem
-    const [maxOrdem] = await db.query(
+    const maxOrdem = await db.query(
       'SELECT MAX(ordem) as maxOrdem FROM acoes_interesse WHERE id_usuario = ?',
       [req.userId]
     );
@@ -39,7 +39,7 @@ router.post('/interesse', verifyToken, async (req, res) => {
 router.delete('/interesse/:ticker', verifyToken, async (req, res) => {
   try {
     const { ticker } = req.params;
-    const [result] = await db.query(
+    const result = await db.query(
       'DELETE FROM acoes_interesse WHERE id_usuario = ? AND ticker = ?',
       [req.userId, ticker]
     );
@@ -58,7 +58,7 @@ router.post('/interesse/:ticker/subir', verifyToken, async (req, res) => {
   try {
     const { ticker } = req.params;
     // Busca a ação e a ordem atual
-    const [acoes] = await db.query(
+    const acoes = await db.query(
       'SELECT id, ordem FROM acoes_interesse WHERE id_usuario = ? AND ticker = ?',
       [req.userId, ticker]
     );
@@ -70,7 +70,7 @@ router.post('/interesse/:ticker/subir', verifyToken, async (req, res) => {
       return res.status(400).json({ message: 'Ação já está no topo' });
     }
     // Busca a ação acima
-    const [acima] = await db.query(
+    const acima = await db.query(
       'SELECT id, ordem FROM acoes_interesse WHERE id_usuario = ? AND ordem = ?',
       [req.userId, ordem - 1]
     );
@@ -92,7 +92,7 @@ router.post('/interesse/:ticker/descer', verifyToken, async (req, res) => {
   try {
     const { ticker } = req.params;
     // Busca a ação e a ordem atual
-    const [acoes] = await db.query(
+    const acoes = await db.query(
       'SELECT id, ordem FROM acoes_interesse WHERE id_usuario = ? AND ticker = ?',
       [req.userId, ticker]
     );
@@ -101,7 +101,7 @@ router.post('/interesse/:ticker/descer', verifyToken, async (req, res) => {
     }
     const { id, ordem } = acoes[0];
     // Busca a ação abaixo
-    const [abaixo] = await db.query(
+    const abaixo = await db.query(
       'SELECT id, ordem FROM acoes_interesse WHERE id_usuario = ? AND ordem = ?',
       [req.userId, ordem + 1]
     );
@@ -121,7 +121,7 @@ router.post('/interesse/:ticker/descer', verifyToken, async (req, res) => {
 // GET /api/acoes/interesse
 router.get('/interesse', verifyToken, async (req, res) => {
   try {
-    const [acoes] = await db.query(
+    const acoes = await db.query(
       'SELECT ticker, ordem FROM acoes_interesse WHERE id_usuario = ? ORDER BY ordem ASC',
       [req.userId]
     );
