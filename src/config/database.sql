@@ -1,0 +1,162 @@
+-- Criação do banco de dados
+CREATE DATABASE IF NOT EXISTS simulador_corretora;
+USE simulador_corretora;
+
+-- Tabela de usuários
+CREATE TABLE IF NOT EXISTS usuario (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  email VARCHAR(255) NOT NULL,
+  senha_hash VARCHAR(255) NOT NULL,
+  token_rec_senha VARCHAR(255),
+  data_token_rs DATETIME,
+  numero_falhas_login INT DEFAULT 0,
+  ultima_hora_negociacao TIME DEFAULT '10:00:00'
+);
+
+-- Tabela de ações de interesse
+CREATE TABLE IF NOT EXISTS acao_interesse (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  id_usuario INT,
+  ticker VARCHAR(10),
+  ordem INT NOT NULL,
+  FOREIGN KEY (id_usuario) REFERENCES usuario(id)
+);
+
+-- Tabela de carteira
+CREATE TABLE IF NOT EXISTS carteira (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  id_usuario INT,
+  ticker VARCHAR(10),
+  quantidade INT NOT NULL DEFAULT 0,
+  preco_compra DECIMAL(10,2) NOT NULL,
+  quantidade_vendido INT DEFAULT 0,
+  preco_venda DECIMAL(10,2),
+  FOREIGN KEY (id_usuario) REFERENCES usuario(id)
+);
+
+-- Tabela de ordens de compra
+CREATE TABLE IF NOT EXISTS ordem_compra (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  id_usuario INT,
+  data_hora DATETIME NOT NULL,
+  ticker VARCHAR(10),
+  quantidade INT NOT NULL,
+  modo ENUM('mercado', 'limite') NOT NULL,
+  preco_referencia DECIMAL(10,2),
+  executada BOOLEAN DEFAULT FALSE,
+  preco_execucao DECIMAL(10,2),
+  data_hora_execucao DATETIME,
+  FOREIGN KEY (id_usuario) REFERENCES usuario(id)
+);
+
+-- Tabela de ordens de venda
+CREATE TABLE IF NOT EXISTS ordem_venda (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  id_usuario INT,
+  data_hora DATETIME NOT NULL,
+  ticker VARCHAR(10),
+  quantidade INT NOT NULL,
+  modo ENUM('mercado', 'limite') NOT NULL,
+  preco_repasse DECIMAL(10,2),
+  executada BOOLEAN DEFAULT FALSE,
+  preco_execucao DECIMAL(10,2),
+  data_hora_execucao DATETIME,
+  FOREIGN KEY (id_usuario) REFERENCES usuario(id)
+);
+
+-- Tabela de conta corrente
+CREATE TABLE IF NOT EXISTS conta_corrente (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  id_usuario INT,
+  historico VARCHAR(255) NOT NULL,
+  data_hora DATETIME NOT NULL,
+  valor DECIMAL(10,2) NOT NULL,
+  FOREIGN KEY (id_usuario) REFERENCES usuario(id)
+);
+
+-- Inserir todas as ações do arquivo JSON
+INSERT INTO acao (ticker, preco_atual, variacao_dia, variacao_percentual_dia) VALUES
+('ALOS3', 18.17, 0.00, 0.00),
+('ABEV3', 12.86, 0.00, 0.00),
+('ASAI3', 6.79, 0.00, 0.00),
+('AURE3', 8.00, 0.00, 0.00),
+('AZZA3', 26.60, 0.00, 0.00),
+('B3SA3', 10.70, 0.00, 0.00),
+('BBSE3', 39.02, 0.00, 0.00),
+('BBDC3', 10.50, 0.00, 0.00),
+('BBDC4', 11.43, 0.00, 0.00),
+('BRAP4', 16.24, 0.00, 0.00),
+('BBAS3', 27.66, 0.00, 0.00),
+('BRKM5', 10.80, 0.00, 0.00),
+('BRAV3', 17.82, 0.00, 0.00),
+('BRFS3', 19.18, 0.00, 0.00),
+('BPAC11', 32.08, 0.00, 0.00),
+('CXSE3', 15.68, 0.00, 0.00),
+('CMIG4', 10.49, 0.00, 0.00),
+('COGN3', 1.61, 0.00, 0.00),
+('CPLE6', 9.92, 0.00, 0.00),
+('CSAN3', 7.27, 0.00, 0.00),
+('CPFE3', 36.15, 0.00, 0.00),
+('CMIN3', 5.27, 0.00, 0.00),
+('CVCB3', 1.87, 0.00, 0.00),
+('CYRE3', 20.84, 0.00, 0.00),
+('DIRR3', 30.42, 0.00, 0.00),
+('ELET3', 38.19, 0.00, 0.00),
+('ELET6', 42.58, 0.00, 0.00),
+('EMBR3', 73.60, 0.00, 0.00),
+('ENGI11', 39.22, 0.00, 0.00),
+('ENEV3', 12.13, 0.00, 0.00),
+('EGIE3', 36.96, 0.00, 0.00),
+('EQTL3', 30.21, 0.00, 0.00),
+('FLRY3', 11.06, 0.00, 0.00),
+('GGBR4', 16.82, 0.00, 0.00),
+('GOAU4', 9.13, 0.00, 0.00),
+('NTCO3', 13.37, 0.00, 0.00),
+('HAPV3', 32.55, 0.00, 0.00),
+('HYPE3', 19.25, 0.00, 0.00),
+('IGTI11', 17.56, 0.00, 0.00),
+('IRBR3', 46.91, 0.00, 0.00),
+('ISAE4', 22.88, 0.00, 0.00),
+('ITSA4', 8.94, 0.00, 0.00),
+('ITUB4', 29.59, 0.00, 0.00),
+('JBSS3', 29.41, 0.00, 0.00),
+('KLBN11', 19.68, 0.00, 0.00),
+('RENT3', 29.43, 0.00, 0.00),
+('LREN3', 11.74, 0.00, 0.00),
+('MGLU3', 7.63, 0.00, 0.00),
+('POMO4', 7.13, 0.00, 0.00),
+('MRFG3', 14.85, 0.00, 0.00),
+('BEEF3', 4.79, 0.00, 0.00),
+('MRVE3', 4.77, 0.00, 0.00),
+('MULT3', 21.37, 0.00, 0.00),
+('PCAR3', 2.49, 0.00, 0.00),
+('PETR3', 35.58, 0.00, 0.00),
+('PETR4', 32.82, 0.00, 0.00),
+('RECV3', 14.89, 0.00, 0.00),
+('PRIO3', 38.32, 0.00, 0.00),
+('PETZ3', 4.25, 0.00, 0.00),
+('PSSA3', 37.67, 0.00, 0.00),
+('RADL3', 17.69, 0.00, 0.00),
+('RAIZ4', 1.74, 0.00, 0.00),
+('RDOR3', 27.96, 0.00, 0.00),
+('RAIL3', 17.87, 0.00, 0.00),
+('SBSP3', 93.07, 0.00, 0.00),
+('SANB11', 25.55, 0.00, 0.00),
+('STBP3', 13.12, 0.00, 0.00),
+('SMTO3', 21.41, 0.00, 0.00),
+('CSNA3', 8.80, 0.00, 0.00),
+('SLCE3', 18.65, 0.00, 0.00),
+('SMFT3', 18.86, 0.00, 0.00),
+('SUZB3', 55.34, 0.00, 0.00),
+('TAEE11', 31.93, 0.00, 0.00),
+('VIVT3', 24.53, 0.00, 0.00),
+('TIMS3', 15.75, 0.00, 0.00),
+('TOTS3', 33.98, 0.00, 0.00),
+('UGPA3', 15.98, 0.00, 0.00),
+('USIM5', 6.02, 0.00, 0.00),
+('VALE3', 54.88, 0.00, 0.00),
+('VAMO3', 3.82, 0.00, 0.00),
+('VBBR3', 15.93, 0.00, 0.00),
+('VIVA3', 17.20, 0.00, 0.00),
+('WEGE3', 47.81, 0.00, 0.00),
+('YDUQ3', 10.66, 0.00, 0.00); 

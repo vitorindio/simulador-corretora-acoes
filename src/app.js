@@ -6,8 +6,7 @@ const dotenv = require('dotenv');
 dotenv.config();
 
 // Importa as rotas
-const authRoutes = require('./routes/authRoutes');
-const usuarioRoutes = require('./routes/usuarioRoutes');
+const usuariosRoutes = require('./routes/usuariosRoutes');
 const acoesRoutes = require('./routes/acoesRoutes');
 const ordemRoutes = require('./routes/ordemRoutes');
 const carteiraRoutes = require('./routes/carteiraRoutes');
@@ -20,11 +19,10 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 // Rotas
-app.use('/api/auth', authRoutes);
-app.use('/api/usuario', usuarioRoutes);
-app.use('/api/acoes', acoesRoutes);
-app.use('/api/ordens', ordemRoutes);
-app.use('/api/carteira', carteiraRoutes);
+app.use('/usuarios', usuariosRoutes);
+app.use('/acoes', acoesRoutes);
+app.use('/ordens', ordemRoutes);
+app.use('/carteira', carteiraRoutes);
 
 // Rota de teste
 app.get('/', (req, res) => {
@@ -40,8 +38,4 @@ app.use((err, req, res, next) => {
   });
 });
 
-// Inicia o servidor
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
-  console.log(`Servidor rodando na porta ${PORT}`);
-}); 
+module.exports = app; 
