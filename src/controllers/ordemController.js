@@ -1,5 +1,6 @@
 const db = require('../config/database');
 const { verificarToken } = require('../middleware/auth');
+const { getPrecosAcoes, getTickersDisponiveis } = require('../services/acoesService');
 
 // Funções auxiliares
 const calcularPrecoMedio = (quantidadeAtual, precoAtual, quantidadeNova, precoNovo) => {
@@ -10,7 +11,7 @@ const calcularPrecoMedio = (quantidadeAtual, precoAtual, quantidadeNova, precoNo
 const criarOrdemCompra = async (req, res) => {
   try {
     const { ticker, quantidade, modo, preco_referencia } = req.body;
-    const id_usuario = req.usuario.id;
+    const id_usuario = req.userId;
 
     // Validações básicas
     if (!ticker || !quantidade || !modo) {
@@ -21,6 +22,12 @@ const criarOrdemCompra = async (req, res) => {
     }
     if (quantidade <= 0) {
       return res.status(400).json({ message: 'Quantidade deve ser maior que zero' });
+    }
+
+    // Verifica se o ticker existe na lista de disponíveis
+    const tickersDisponiveis = await getTickersDisponiveis();
+    if (!tickersDisponiveis.includes(ticker)) {
+      return res.status(400).json({ message: 'Ticker inválido ou não disponível' });
     }
 
     // Insere ordem
@@ -42,7 +49,8 @@ const criarOrdemCompra = async (req, res) => {
 const executarOrdemCompra = async (req, res) => {
   try {
     const { id } = req.params;
-    const id_usuario = req.usuario.id;
+    const id_usuario = req.userId;
+    console.log(`Executando ordem de compra ${id} para usuário ${id_usuario}`);
 
     // Busca ordem
     const [ordens] = await db.query(
@@ -51,60 +59,86 @@ const executarOrdemCompra = async (req, res) => {
     );
 
     if (ordens.length === 0) {
+      console.log('Ordem não encontrada ou já executada');
       return res.status(404).json({ message: 'Ordem não encontrada ou já executada' });
     }
 
     const ordem = ordens[0];
-    const preco_execucao = ordem.modo === 'mercado' ? 
-      Math.random() * 10 + 20 : // Simulação de preço de mercado
-      ordem.preco_referencia;
+    console.log('Ordem encontrada:', ordem);
+    
+    try {
+      // Busca o preço atual da ação
+      console.log(`Buscando preço para ${ordem.ticker}`);
+      const precos = await getPrecosAcoes([ordem.ticker]);
+      console.log('Preços retornados:', precos);
+      const precoAtual = precos[0]?.preco_atual;
+      console.log('Preço atual:', precoAtual);
 
-    // Atualiza ordem
-    await db.query(
-      'UPDATE ordem_compra SET executada = true, preco_execucao = ?, data_hora_execucao = NOW() WHERE id = ?',
-      [preco_execucao, id]
-    );
+      if (!precoAtual) {
+        console.log('Preço não encontrado para o ticker:', ordem.ticker);
+        return res.status(400).json({ message: 'Não foi possível obter o preço atual da ação' });
+      }
 
-    // Atualiza carteira
-    const [carteiras] = await db.query(
-      'SELECT * FROM carteira WHERE id_usuario = ? AND ticker = ?',
-      [id_usuario, ordem.ticker]
-    );
+      const preco_execucao = ordem.modo === 'mercado' ? 
+        precoAtual : // Usa o preço atual do mercado
+        ordem.preco_referencia;
 
-    if (carteiras.length === 0) {
-      // Nova posição
+      // Atualiza ordem
       await db.query(
-        'INSERT INTO carteira (id_usuario, ticker, quantidade, preco_compra) VALUES (?, ?, ?, ?)',
-        [id_usuario, ordem.ticker, ordem.quantidade, preco_execucao]
-      );
-    } else {
-      // Atualiza posição existente
-      const carteira = carteiras[0];
-      const novo_preco_medio = calcularPrecoMedio(
-        carteira.quantidade,
-        carteira.preco_compra,
-        ordem.quantidade,
-        preco_execucao
+        'UPDATE ordem_compra SET executada = true, preco_execucao = ?, data_hora_execucao = NOW() WHERE id = ?',
+        [preco_execucao, id]
       );
 
-      await db.query(
-        'UPDATE carteira SET quantidade = quantidade + ?, preco_compra = ? WHERE id = ?',
-        [ordem.quantidade, novo_preco_medio, carteira.id]
+      // Atualiza carteira
+      const [carteiras] = await db.query(
+        'SELECT * FROM carteira WHERE id_usuario = ? AND ticker = ?',
+        [id_usuario, ordem.ticker]
       );
+
+      if (carteiras.length === 0) {
+        // Nova posição
+        await db.query(
+          'INSERT INTO carteira (id_usuario, ticker, quantidade, preco_compra) VALUES (?, ?, ?, ?)',
+          [id_usuario, ordem.ticker, ordem.quantidade, preco_execucao]
+        );
+      } else {
+        // Atualiza posição existente
+        const carteira = carteiras[0];
+        const novo_preco_medio = calcularPrecoMedio(
+          carteira.quantidade,
+          carteira.preco_compra,
+          ordem.quantidade,
+          preco_execucao
+        );
+
+        await db.query(
+          'UPDATE carteira SET quantidade = quantidade + ?, preco_compra = ? WHERE id = ?',
+          [ordem.quantidade, novo_preco_medio, carteira.id]
+        );
+      }
+
+      // Registra movimentação na conta
+      const valor_total = ordem.quantidade * preco_execucao;
+      await db.query(
+        'INSERT INTO conta_corrente (id_usuario, historico, data_hora, valor) VALUES (?, ?, NOW(), ?)',
+        [id_usuario, `Compra ${ordem.ticker}`, -valor_total]
+      );
+
+      res.json({ 
+        message: 'Ordem executada com sucesso',
+        preco_execucao,
+        valor_total
+      });
+    } catch (error) {
+      console.error('Erro ao buscar preço:', error.message);
+      if (error.message.includes('Tickers não disponíveis')) {
+        return res.status(400).json({ 
+          message: 'Ação não disponível para negociação',
+          detalhes: error.message
+        });
+      }
+      throw error; // Re-throw outros erros
     }
-
-    // Registra movimentação na conta
-    const valor_total = ordem.quantidade * preco_execucao;
-    await db.query(
-      'INSERT INTO conta_corrente (id_usuario, historico, data_hora, valor) VALUES (?, ?, NOW(), ?)',
-      [id_usuario, `Compra ${ordem.ticker}`, -valor_total]
-    );
-
-    res.json({ 
-      message: 'Ordem executada com sucesso',
-      preco_execucao,
-      valor_total
-    });
   } catch (error) {
     console.error('Erro ao executar ordem de compra:', error);
     res.status(500).json({ message: 'Erro ao executar ordem de compra' });
@@ -113,7 +147,7 @@ const executarOrdemCompra = async (req, res) => {
 
 const listarOrdensCompra = async (req, res) => {
   try {
-    const id_usuario = req.usuario.id;
+    const id_usuario = req.userId;
     const [ordens] = await db.query(
       'SELECT * FROM ordem_compra WHERE id_usuario = ? ORDER BY data_hora DESC',
       [id_usuario]
@@ -128,7 +162,7 @@ const listarOrdensCompra = async (req, res) => {
 const cancelarOrdemCompra = async (req, res) => {
   try {
     const { id } = req.params;
-    const id_usuario = req.usuario.id;
+    const id_usuario = req.userId;
 
     const [result] = await db.query(
       'DELETE FROM ordem_compra WHERE id = ? AND id_usuario = ? AND executada = false',
@@ -150,7 +184,7 @@ const cancelarOrdemCompra = async (req, res) => {
 const criarOrdemVenda = async (req, res) => {
   try {
     const { ticker, quantidade, modo, preco_repasse } = req.body;
-    const id_usuario = req.usuario.id;
+    const id_usuario = req.userId;
 
     // Validações básicas
     if (!ticker || !quantidade || !modo) {
@@ -161,6 +195,12 @@ const criarOrdemVenda = async (req, res) => {
     }
     if (quantidade <= 0) {
       return res.status(400).json({ message: 'Quantidade deve ser maior que zero' });
+    }
+
+    // Verifica se o ticker existe na lista de disponíveis
+    const tickersDisponiveis = await getTickersDisponiveis();
+    if (!tickersDisponiveis.includes(ticker)) {
+      return res.status(400).json({ message: 'Ticker inválido ou não disponível' });
     }
 
     // Verifica se tem quantidade suficiente na carteira
@@ -192,7 +232,8 @@ const criarOrdemVenda = async (req, res) => {
 const executarOrdemVenda = async (req, res) => {
   try {
     const { id } = req.params;
-    const id_usuario = req.usuario.id;
+    const id_usuario = req.userId;
+    console.log(`Executando ordem de venda ${id} para usuário ${id_usuario}`);
 
     // Busca ordem
     const [ordens] = await db.query(
@@ -201,48 +242,79 @@ const executarOrdemVenda = async (req, res) => {
     );
 
     if (ordens.length === 0) {
+      console.log('Ordem não encontrada ou já executada');
       return res.status(404).json({ message: 'Ordem não encontrada ou já executada' });
     }
 
     const ordem = ordens[0];
-    const preco_execucao = ordem.modo === 'mercado' ? 
-      Math.random() * 10 + 20 : // Simulação de preço de mercado
-      ordem.preco_repasse;
+    console.log('Ordem encontrada:', ordem);
 
-    // Atualiza ordem
-    await db.query(
-      'UPDATE ordem_venda SET executada = true, preco_execucao = ?, data_hora_execucao = NOW() WHERE id = ?',
-      [preco_execucao, id]
-    );
+    try {
+      // Busca o preço atual da ação
+      console.log(`Buscando preço para ${ordem.ticker}`);
+      const precos = await getPrecosAcoes([ordem.ticker]);
+      console.log('Preços retornados:', precos);
+      const precoAtual = precos[0]?.preco_atual;
+      console.log('Preço atual:', precoAtual);
 
-    // Atualiza carteira
-    const [carteiras] = await db.query(
-      'SELECT * FROM carteira WHERE id_usuario = ? AND ticker = ?',
-      [id_usuario, ordem.ticker]
-    );
+      if (!precoAtual) {
+        console.log('Preço não encontrado para o ticker:', ordem.ticker);
+        return res.status(400).json({ message: 'Não foi possível obter o preço atual da ação' });
+      }
 
-    const carteira = carteiras[0];
-    const quantidade_vendida = ordem.quantidade;
-    const preco_venda = preco_execucao;
+      const preco_execucao = ordem.modo === 'mercado' ? 
+        precoAtual : // Usa o preço atual do mercado
+        ordem.preco_repasse;
 
-    // Atualiza posição
-    await db.query(
-      'UPDATE carteira SET quantidade = quantidade - ?, quantidade_vendido = quantidade_vendido + ?, preco_venda = ? WHERE id = ?',
-      [quantidade_vendida, quantidade_vendida, preco_venda, carteira.id]
-    );
+      // Atualiza ordem
+      await db.query(
+        'UPDATE ordem_venda SET executada = true, preco_execucao = ?, data_hora_execucao = NOW() WHERE id = ?',
+        [preco_execucao, id]
+      );
 
-    // Registra movimentação na conta
-    const valor_total = ordem.quantidade * preco_execucao;
-    await db.query(
-      'INSERT INTO conta_corrente (id_usuario, historico, data_hora, valor) VALUES (?, ?, NOW(), ?)',
-      [id_usuario, `Venda ${ordem.ticker}`, valor_total]
-    );
+      // Atualiza carteira
+      const [carteiras] = await db.query(
+        'SELECT * FROM carteira WHERE id_usuario = ? AND ticker = ?',
+        [id_usuario, ordem.ticker]
+      );
 
-    res.json({ 
-      message: 'Ordem executada com sucesso',
-      preco_execucao,
-      valor_total
-    });
+      if (carteiras.length === 0) {
+        return res.status(400).json({ message: 'Ação não encontrada na carteira' });
+      }
+
+      const carteira = carteiras[0];
+      if (carteira.quantidade < ordem.quantidade) {
+        return res.status(400).json({ message: 'Quantidade insuficiente na carteira' });
+      }
+
+      // Atualiza quantidade e registra venda
+      await db.query(
+        'UPDATE carteira SET quantidade = quantidade - ?, quantidade_vendido = quantidade_vendido + ?, preco_venda = ? WHERE id = ?',
+        [ordem.quantidade, ordem.quantidade, preco_execucao, carteira.id]
+      );
+
+      // Registra movimentação na conta
+      const valor_total = ordem.quantidade * preco_execucao;
+      await db.query(
+        'INSERT INTO conta_corrente (id_usuario, historico, data_hora, valor) VALUES (?, ?, NOW(), ?)',
+        [id_usuario, `Venda ${ordem.ticker}`, valor_total]
+      );
+
+      res.json({ 
+        message: 'Ordem executada com sucesso',
+        preco_execucao,
+        valor_total
+      });
+    } catch (error) {
+      console.error('Erro ao buscar preço:', error.message);
+      if (error.message.includes('Tickers não disponíveis')) {
+        return res.status(400).json({ 
+          message: 'Ação não disponível para negociação',
+          detalhes: error.message
+        });
+      }
+      throw error; // Re-throw outros erros
+    }
   } catch (error) {
     console.error('Erro ao executar ordem de venda:', error);
     res.status(500).json({ message: 'Erro ao executar ordem de venda' });
@@ -251,7 +323,7 @@ const executarOrdemVenda = async (req, res) => {
 
 const listarOrdensVenda = async (req, res) => {
   try {
-    const id_usuario = req.usuario.id;
+    const id_usuario = req.userId;
     const [ordens] = await db.query(
       'SELECT * FROM ordem_venda WHERE id_usuario = ? ORDER BY data_hora DESC',
       [id_usuario]
@@ -266,7 +338,7 @@ const listarOrdensVenda = async (req, res) => {
 const cancelarOrdemVenda = async (req, res) => {
   try {
     const { id } = req.params;
-    const id_usuario = req.usuario.id;
+    const id_usuario = req.userId;
 
     const [result] = await db.query(
       'DELETE FROM ordem_venda WHERE id = ? AND id_usuario = ? AND executada = false',
@@ -286,7 +358,7 @@ const cancelarOrdemVenda = async (req, res) => {
 
 const listarOrdensPendentes = async (req, res) => {
   try {
-    const id_usuario = req.usuario.id;
+    const id_usuario = req.userId;
     
     const [ordensCompra] = await db.query(
       'SELECT *, "compra" as tipo FROM ordem_compra WHERE id_usuario = ? AND executada = false',

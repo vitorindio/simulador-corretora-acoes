@@ -31,10 +31,12 @@ const cadastrar = async (req, res) => {
       [email, senhaHash]
     );
 
-    // Gera token
-    const token = gerarToken({ id: result.insertId, email });
-
-    res.status(201).json({ token });
+    // Retorna apenas os dados do usuário (sem senha)
+    res.status(201).json({ 
+      id: result.insertId,
+      email: email,
+      message: 'Usuário cadastrado com sucesso. Faça login para obter o token de acesso.'
+    });
   } catch (error) {
     console.error('Erro ao cadastrar:', error);
     res.status(500).json({ message: 'Erro ao cadastrar usuário' });
