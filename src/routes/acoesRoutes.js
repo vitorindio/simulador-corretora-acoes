@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { verifyToken } = require('../middleware/auth');
 const db = require('../config/database');
+const { getPrecosAcoes } = require('../services/acoesService');
 
 // POST /api/acoes/interesse
 router.post('/interesse', verifyToken, async (req, res) => {
@@ -109,18 +110,23 @@ router.post('/interesse/:ticker/desce', verifyToken, async (req, res) => {
 // GET /api/acoes/interesse
 router.get('/interesse', verifyToken, async (req, res) => {
   try {
-    const acoes = await db.query(`
-      SELECT 
-        ai.ticker,
-        ai.ordem,
-        a.preco_atual,
-        a.variacao_dia,
-        a.variacao_percentual_dia
-      FROM acoes_interesse ai
-      LEFT JOIN acao a ON a.ticker = ai.ticker
-      WHERE ai.id_usuario = ?
-      ORDER BY ai.ordem ASC
+    // Busca as ações de interesse do usuário
+    const acoesInteresse = await db.query(`
+      SELECT ticker, ordem
+      FROM acoes_interesse
+      WHERE id_usuario = ?
+      ORDER BY ordem ASC
     `, [req.userId]);
+
+    // Busca os preços atuais das ações
+    const tickers = acoesInteresse.map(acao => acao.ticker);
+    const precos = await getPrecosAcoes(tickers);
+
+    // Combina os dados
+    const acoes = acoesInteresse.map(acao => ({
+      ...acao,
+      ...precos.find(p => p.ticker === acao.ticker)
+    }));
 
     res.json({ acoes });
   } catch (error) {
