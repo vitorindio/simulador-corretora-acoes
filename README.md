@@ -134,12 +134,14 @@ As próximas entregas incluirão:
       </a>
       <span>Desenvolvedor</span>
       <br />
+    </td>
+    <td align="center">
       <a href="https://github.com/marciobfl">
         <img src="https://avatars.githubusercontent.com/u/37818174?u=5fbeb7dab8ac9deb784112bb07278a7a90ed690c&v=4&" alt="" width="100px"/><br />
         <sub><b>Marcio Brasil</b></sub>
       </a>
-      <br />
       <span>Desenvolvedor</span>
+      <br />
     </td>
   </tr>
 </table>
