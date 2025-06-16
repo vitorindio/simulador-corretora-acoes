@@ -2,10 +2,10 @@
   "name": "simulador-corretora-acoes",
   "version": "1.0.0",
   "description": "Simulador de Corretora de Ações - Projeto DSW",
-  "main": "src/app.js",
+  "main": "src/index.js",
   "scripts": {
-    "start": "node src/app.js",
-    "dev": "nodemon src/app.js",
+    "start": "node src/index.js",
+    "dev": "nodemon src/index.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "dependencies": {
