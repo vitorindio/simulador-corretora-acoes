@@ -1,10 +1,10 @@
 const express = require('express');
 const router = express.Router();
-const { verificarToken } = require('../middleware/auth');
+const { verifyToken } = require('../middleware/auth');
 const ordemController = require('../controllers/ordemController');
 
 // Middleware de autenticação para todas as rotas
-router.use(verificarToken);
+router.use(verifyToken);
 
 // Rotas de Ordem de Compra
 router.post('/compra', ordemController.criarOrdemCompra);
