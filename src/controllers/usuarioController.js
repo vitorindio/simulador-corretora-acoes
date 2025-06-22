@@ -126,7 +126,7 @@ const resetarSenha = async (req, res) => {
 
     if (usuarios.length === 0) {
       return res.status(400).json({ message: 'Token inválido ou expirado' });
-    }
+    } 
 
     // Hash da nova senha
     const senhaHash = await bcrypt.hash(nova_senha, 10);
@@ -144,7 +144,7 @@ const resetarSenha = async (req, res) => {
   }
 };
 
-module.exports = {
+module.exports = { 
   cadastrar,
   login,
   recuperarSenha,

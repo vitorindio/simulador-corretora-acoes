@@ -1,4 +1,5 @@
 const db = require('../config/database');
+const {getPrecosAcoes} = require("../services/acoesService");
 
 const interesse = async (req, res) => {
   try {
@@ -75,7 +76,7 @@ const ordemTickerSobe = async (req, res) => {
       res.json({ message: 'Ação movida para cima com sucesso' });
     } catch (error) {
       console.error('Erro ao subir ação de interesse:', error);
-      res.status(500).json({ message: 'Erro interno do servidor' });
+      res.status(500).json({ message: 'Erro interno do servidor' }); 
     }
   }
 
@@ -103,15 +104,17 @@ const ordemTickerDesce = async (req, res) => {
     }
 }
 
-const ordensUsuario = async (reqq, res) => {
+const ordensUsuario = async (req, res) => {
   try {
     // Busca as ações de interesse do usuário
-    const acoesInteresse = await db.query(`
+    const [acoesInteresse] = await db.query(`
       SELECT ticker, ordem
       FROM acao_interesse
       WHERE id_usuario = ?
       ORDER BY ordem ASC
     `, [req.userId]);
+
+    console.log('Ações de interesse do usuário:', acoesInteresse);
 
     // Busca os preços atuais das ações
     const tickers = acoesInteresse.map(acao => acao.ticker);
