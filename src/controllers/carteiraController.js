@@ -1,35 +1,61 @@
 const db = require('../config/database');
+const {getPrecosAcoes} = require("../services/acoesService");
 
 // GET /api/carteira
 const listarCarteira = async (req, res) => {
   try {
-    const carteira = await db.query(`
+    // Busca todas as ações na carteira do usuário
+    const [carteira] = await db.query(`
       SELECT 
         c.ticker,
         c.quantidade,
-        c.preco_medio,
-        (SELECT preco_atual FROM acao WHERE ticker = c.ticker) as preco_atual,
-        (c.quantidade * (SELECT preco_atual FROM acao WHERE ticker = c.ticker)) as valor_atual,
-        (c.quantidade * c.preco_medio) as valor_investido,
-        ((c.quantidade * (SELECT preco_atual FROM acao WHERE ticker = c.ticker)) - (c.quantidade * c.preco_medio)) as lucro_prejuizo,
-        (((SELECT preco_atual FROM acao WHERE ticker = c.ticker) - c.preco_medio) / c.preco_medio * 100) as variacao_percentual
+        c.preco_compra as preco_medio,
+        c.quantidade_vendido,
+        c.preco_venda
       FROM carteira c
       WHERE c.id_usuario = ? AND c.quantidade > 0
-      ORDER BY valor_atual DESC
+      ORDER BY c.ticker
     `, [req.userId]);
 
-    const totais = carteira.reduce((acc, item) => ({
+    // Busca os preços atuais das ações
+    const tickers = carteira.map(item => item.ticker);
+    const precos = await getPrecosAcoes(tickers);
+
+    // Combina os dados e calcula os valores
+    const carteiraCompleta = carteira.map(item => {
+      const preco = precos.find(p => p.ticker === item.ticker);
+      const precoAtual = preco?.preco_atual || 0;
+      const valorAtual = item.quantidade * precoAtual;
+      const valorInvestido = item.quantidade * item.preco_medio;
+      const lucroPrejuizo = valorAtual - valorInvestido;
+      const variacaoPercentual = item.preco_medio > 0
+          ? ((precoAtual - item.preco_medio) / item.preco_medio) * 100
+          : 0;
+
+      return {
+        ...item,
+        preco_atual: precoAtual,
+        valor_atual: valorAtual,
+        valor_investido: valorInvestido,
+        lucro_prejuizo: lucroPrejuizo,
+        variacao_percentual: Number(variacaoPercentual.toFixed(2))
+      };
+    }).sort((a, b) => b.valor_atual - a.valor_atual);
+
+    // Calcula totais
+    const totais = carteiraCompleta.reduce((acc, item) => ({
       valorTotal: acc.valorTotal + (item.valor_atual || 0),
       valorInvestido: acc.valorInvestido + (item.valor_investido || 0),
       lucroPrejuizo: acc.lucroPrejuizo + (item.lucro_prejuizo || 0)
     }), { valorTotal: 0, valorInvestido: 0, lucroPrejuizo: 0 });
 
-    totais.variacaoPercentual = totais.valorInvestido > 0 
-      ? ((totais.valorTotal - totais.valorInvestido) / totais.valorInvestido) * 100 
-      : 0;
+    // Calcula variação percentual total
+    totais.variacaoPercentual = totais.valorInvestido > 0
+        ? ((totais.valorTotal - totais.valorInvestido) / totais.valorInvestido) * 100
+        : 0;
 
     res.json({
-      carteira,
+      carteira: carteiraCompleta,
       totais: {
         ...totais,
         variacaoPercentual: Number(totais.variacaoPercentual.toFixed(2))

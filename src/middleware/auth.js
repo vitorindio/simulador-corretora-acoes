@@ -26,7 +26,7 @@ const verifyToken = (req, res, next) => {
     }
 
     // Adiciona o ID do usuário ao request
-    req.userId = decoded.userId;
+    req.userId = decoded.id;
     return next();
   });
 };
