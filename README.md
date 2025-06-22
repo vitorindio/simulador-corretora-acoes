@@ -143,6 +143,14 @@ As próximas entregas incluirão:
       </a>
       <span>Desenvolvedor</span>
     </td>
+    <td align="center">
+      <a href="https://github.com/emersonsemidio">
+        <img src="https://avatars.githubusercontent.com/u/53706014?v=4" alt="" width="100px"/><br />
+        <sub><b>Emerson Santana</b></sub>
+        <br />
+      </a>
+      <span>Desenvolvedor</span>
+    </td>
   </tr>
 </table>
 
