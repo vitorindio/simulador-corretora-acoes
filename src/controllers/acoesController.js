@@ -84,7 +84,7 @@ const ordemTickerDesce = async (req, res) => {
   try {
       const { ticker } = req.params;
       // Busca a ação atual
-      const acoes = await db.query('SELECT id, ordem FROM acao_interesse WHERE id_usuario = ? AND ticker = ?', [req.userId, ticker]);
+      const [acoes] = await db.query('SELECT id, ordem FROM acao_interesse WHERE id_usuario = ? AND ticker = ?', [req.userId, ticker]);
       if (acoes.length === 0) {
         return res.status(404).json({ message: 'Ação não encontrada na lista de interesse' });
       }
