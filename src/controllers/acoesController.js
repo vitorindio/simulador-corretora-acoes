@@ -1,4 +1,4 @@
-
+const db = require('../config/database');
 
 const interesse = async (req, res) => {
   try {
@@ -9,7 +9,7 @@ const interesse = async (req, res) => {
 
     // Verifica se já existe
     const [existe] = await db.query(
-      'SELECT id FROM acoes_interesse WHERE id_usuario = ? AND ticker = ?',
+      'SELECT id FROM acao_interesse WHERE id_usuario = ? AND ticker = ?',
       [req.userId, ticker]
     );
     if (existe.length > 0) {
@@ -18,13 +18,13 @@ const interesse = async (req, res) => {
 
     // Descobre a próxima ordem
     const [maxOrdem] = await db.query(
-      'SELECT MAX(ordem) as maxOrdem FROM acoes_interesse WHERE id_usuario = ?',
+      'SELECT MAX(ordem) as maxOrdem FROM acao_interesse WHERE id_usuario = ?',
       [req.userId]
     );
     const ordem = (maxOrdem[0].maxOrdem || 0) + 1;
 
     await db.query(
-      'INSERT INTO acoes_interesse (id_usuario, ticker, ordem) VALUES (?, ?, ?)',
+      'INSERT INTO acao_interesse (id_usuario, ticker, ordem) VALUES (?, ?, ?)',
       [req.userId, ticker, ordem]
     );
 
@@ -39,7 +39,7 @@ const deletar = async (req, res) => {
   try {
     const { ticker } = req.params;
     const result = await db.query(
-      'DELETE FROM acoes_interesse WHERE id_usuario = ? AND ticker = ?',
+      'DELETE FROM acao_interesse WHERE id_usuario = ? AND ticker = ?',
       [req.userId, ticker]
     );
     if (result.affectedRows === 0) {
@@ -56,7 +56,7 @@ const ordemTickerSobe = async (req, res) => {
   try {
       const { ticker } = req.params;
       // Busca a ação atual
-      const [acoes] = await db.query('SELECT id, ordem FROM acoes_interesse WHERE id_usuario = ? AND ticker = ?', [req.userId, ticker]);
+      const [acoes] = await db.query('SELECT id, ordem FROM acao_interesse WHERE id_usuario = ? AND ticker = ?', [req.userId, ticker]);
       if (acoes.length === 0) {
         return res.status(404).json({ message: 'Ação não encontrada na lista de interesse' });
       }
@@ -65,13 +65,13 @@ const ordemTickerSobe = async (req, res) => {
         return res.status(400).json({ message: 'Ação já está no topo da lista' });
       }
       // Busca a ação acima
-      const acima = await db.query('SELECT id, ordem, ticker FROM acoes_interesse WHERE id_usuario = ? AND ordem = ?', [req.userId, acao.ordem - 1]);
+      const acima = await db.query('SELECT id, ordem, ticker FROM acao_interesse WHERE id_usuario = ? AND ordem = ?', [req.userId, acao.ordem - 1]);
       if (acima.length === 0) {
         return res.status(400).json({ message: 'Não há ação acima para trocar' });
       }
       // Troca as ordens
-      await db.query('UPDATE acoes_interesse SET ordem = ? WHERE id = ?', [acao.ordem - 1, acao.id]);
-      await db.query('UPDATE acoes_interesse SET ordem = ? WHERE id = ?', [acao.ordem, acima[0].id]);
+      await db.query('UPDATE acao_interesse SET ordem = ? WHERE id = ?', [acao.ordem - 1, acao.id]);
+      await db.query('UPDATE acao_interesse SET ordem = ? WHERE id = ?', [acao.ordem, acima[0].id]);
       res.json({ message: 'Ação movida para cima com sucesso' });
     } catch (error) {
       console.error('Erro ao subir ação de interesse:', error);
@@ -83,19 +83,19 @@ const ordemTickerDesce = async (req, res) => {
   try {
       const { ticker } = req.params;
       // Busca a ação atual
-      const acoes = await db.query('SELECT id, ordem FROM acoes_interesse WHERE id_usuario = ? AND ticker = ?', [req.userId, ticker]);
+      const acoes = await db.query('SELECT id, ordem FROM acao_interesse WHERE id_usuario = ? AND ticker = ?', [req.userId, ticker]);
       if (acoes.length === 0) {
         return res.status(404).json({ message: 'Ação não encontrada na lista de interesse' });
       }
       const acao = acoes[0];
       // Busca a ação abaixo
-      const abaixo = await db.query('SELECT id, ordem, ticker FROM acoes_interesse WHERE id_usuario = ? AND ordem = ?', [req.userId, acao.ordem + 1]);
+      const abaixo = await db.query('SELECT id, ordem, ticker FROM acao_interesse WHERE id_usuario = ? AND ordem = ?', [req.userId, acao.ordem + 1]);
       if (abaixo.length === 0) {
         return res.status(400).json({ message: 'Ação já está na última posição' });
       }
       // Troca as ordens
-      await db.query('UPDATE acoes_interesse SET ordem = ? WHERE id = ?', [acao.ordem + 1, acao.id]);
-      await db.query('UPDATE acoes_interesse SET ordem = ? WHERE id = ?', [acao.ordem, abaixo[0].id]);
+      await db.query('UPDATE acao_interesse SET ordem = ? WHERE id = ?', [acao.ordem + 1, acao.id]);
+      await db.query('UPDATE acao_interesse SET ordem = ? WHERE id = ?', [acao.ordem, abaixo[0].id]);
       res.json({ message: 'Ação movida para baixo com sucesso' });
     } catch (error) {
       console.error('Erro ao descer ação de interesse:', error);
@@ -108,7 +108,7 @@ const ordensUsuario = async (reqq, res) => {
     // Busca as ações de interesse do usuário
     const acoesInteresse = await db.query(`
       SELECT ticker, ordem
-      FROM acoes_interesse
+      FROM acao_interesse
       WHERE id_usuario = ?
       ORDER BY ordem ASC
     `, [req.userId]);

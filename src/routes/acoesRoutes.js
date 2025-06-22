@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const { verifyToken } = require('../middleware/auth');
-const db = require('../config/database');
+
 const acoesController = require('../controllers/acoesController');
 
 // POST /api/acoes/interesse
