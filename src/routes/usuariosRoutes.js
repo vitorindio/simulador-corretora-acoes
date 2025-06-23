@@ -1,11 +1,9 @@
 const express = require('express');
 const router = express.Router();
+const { verifyToken } = require('../middleware/auth');
 const usuarioController = require('../controllers/usuarioController');
 
-// Rotas públicas
-router.post('/', usuarioController.cadastrar);
-router.post('/login', usuarioController.login);
-router.post('/esqueci', usuarioController.recuperarSenha);
-router.post('/resetar', usuarioController.resetarSenha);
+// POST /api/usuario/atualizar-hora-negociacao
+router.post('/atualizar-hora-negociacao', verifyToken, usuarioController.atualizarHoraNegociacao);
 
 module.exports = router; 
