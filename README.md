@@ -112,9 +112,6 @@ Para a primeira entrega, focamos na implementação do backend com:
 
 As próximas entregas incluirão:
 1. Implementação do frontend em Vue.js
-2. Funcionalidades de compra e venda de ações
-3. Gerenciamento de carteira
-4. Sistema de conta corrente
 
 ## Contribuição
 
