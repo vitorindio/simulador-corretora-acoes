@@ -5,6 +5,9 @@ let cachePrecos = {};
 let ultimaAtualizacao = null;
 const TEMPO_CACHE = 60 * 1000; // 1 minuto em milissegundos
 
+const TICKERS_URL = 'https://raw.githubusercontent.com/marciobarros/dsw-simulador-corretora/refs/heads/main/tickers.json';
+const PRECO_MINUTO_URL = (minuto) => `https://raw.githubusercontent.com/marciobarros/dsw-simulador-corretora/refs/heads/main/${minuto}.json`;
+
 async function atualizarPrecos() {
   try {
     // Busca o minuto atual
@@ -13,7 +16,7 @@ async function atualizarPrecos() {
     console.log(`Atualizando preços do minuto ${minuto}...`);
     
     // Busca os preços da API do professor
-    const url = `https://raw.githubusercontent.com/marciobarros/dsw-simulador-corretora/refs/heads/main/${minuto}.json`;
+    const url = PRECO_MINUTO_URL(minuto);
     console.log(`Buscando preços em: ${url}`);
     const response = await axios.get(url);
     const precos = response.data;
@@ -82,7 +85,7 @@ async function getPrecosAcoes(tickers) {
 // Função para buscar a lista de tickers disponíveis
 async function getTickersDisponiveis() {
   try {
-    const response = await axios.get('https://raw.githubusercontent.com/marciobarros/dsw-simulador-corretora/refs/heads/main/tickers.json');
+    const response = await axios.get(TICKERS_URL);
     return response.data.map(acao => acao.ticker);
   } catch (error) {
     console.error('Erro ao buscar tickers disponíveis:', error);
@@ -90,8 +93,61 @@ async function getTickersDisponiveis() {
   }
 }
 
+// Busca tickers e preços de fechamento
+async function getFechamentos() {
+  const response = await axios.get(TICKERS_URL);
+  // [{ ticker, fechamento }]
+  return response.data;
+}
+
+// Busca preços atuais para o minuto simulado
+async function getPrecosAtuais(minuto) {
+  const response = await axios.get(PRECO_MINUTO_URL(minuto));
+  // [{ ticker, preco }]
+  return response.data;
+}
+
+// Serviço principal: retorna lista de ações com preços e variações
+async function getAcoesComVariação({ tickers, minuto }) {
+  if (typeof minuto !== 'number' || minuto < 0 || minuto > 59) {
+    throw new Error('Minuto simulado inválido (deve ser 0-59)');
+  }
+  const [fechamentos, precosAtuais] = await Promise.all([
+    getFechamentos(),
+    getPrecosAtuais(minuto)
+  ]);
+
+  // Monta mapa para acesso rápido
+  const mapFechamento = Object.fromEntries(fechamentos.map(a => [a.ticker, a.fechamento]));
+  const mapPrecoAtual = Object.fromEntries(precosAtuais.map(a => [a.ticker, a.preco]));
+
+  // Se tickers não for passado, retorna todos
+  const listaTickers = tickers && tickers.length > 0 ? tickers : Object.keys(mapFechamento);
+
+  // Monta resultado
+  const resultado = listaTickers
+    .filter(ticker => mapFechamento[ticker] !== undefined && mapPrecoAtual[ticker] !== undefined)
+    .map(ticker => {
+      const fechamento = mapFechamento[ticker];
+      const preco_atual = mapPrecoAtual[ticker];
+      const variacao_nominal = +(preco_atual - fechamento).toFixed(2);
+      const variacao_percentual = +(((preco_atual - fechamento) / fechamento) * 100).toFixed(2);
+      return {
+        ticker,
+        preco_atual,
+        fechamento,
+        variacao_nominal,
+        variacao_percentual
+      };
+    });
+  return resultado;
+}
+
 module.exports = {
   getPrecosAcoes,
   atualizarPrecos,
-  getTickersDisponiveis
+  getTickersDisponiveis,
+  getFechamentos,
+  getPrecosAtuais,
+  getAcoesComVariação
 }; 

@@ -1,7 +1,7 @@
 const db = require('../config/database');
-const {getPrecosAcoes} = require("../services/acoesService");
+const { getAcoesComVariação } = require('../services/acoesService');
 
-// GET /api/carteira
+// GET /api/carteira?minuto=XX
 const listarCarteira = async (req, res) => {
   try {
     // Busca todas as ações na carteira do usuário
@@ -17,9 +17,15 @@ const listarCarteira = async (req, res) => {
       ORDER BY c.ticker
     `, [req.userId]);
 
+    // Busca o minuto simulado da query string
+    const minuto = req.query.minuto ? parseInt(req.query.minuto, 10) : null;
+    if (minuto === null || isNaN(minuto) || minuto < 0 || minuto > 59) {
+      return res.status(400).json({ message: 'Parâmetro minuto (0-59) é obrigatório na query string.' });
+    }
+
     // Busca os preços atuais das ações
     const tickers = carteira.map(item => item.ticker);
-    const precos = await getPrecosAcoes(tickers);
+    const precos = await getAcoesComVariação({ tickers, minuto });
 
     // Combina os dados e calcula os valores
     const carteiraCompleta = carteira.map(item => {
@@ -38,29 +44,14 @@ const listarCarteira = async (req, res) => {
         valor_atual: valorAtual,
         valor_investido: valorInvestido,
         lucro_prejuizo: lucroPrejuizo,
-        variacao_percentual: Number(variacaoPercentual.toFixed(2))
+        variacao_percentual: Number(variacaoPercentual.toFixed(2)),
+        fechamento: preco?.fechamento,
+        variacao_nominal: preco?.variacao_nominal,
+        variacao_percentual_mercado: preco?.variacao_percentual
       };
     }).sort((a, b) => b.valor_atual - a.valor_atual);
 
-    // Calcula totais
-    const totais = carteiraCompleta.reduce((acc, item) => ({
-      valorTotal: acc.valorTotal + (item.valor_atual || 0),
-      valorInvestido: acc.valorInvestido + (item.valor_investido || 0),
-      lucroPrejuizo: acc.lucroPrejuizo + (item.lucro_prejuizo || 0)
-    }), { valorTotal: 0, valorInvestido: 0, lucroPrejuizo: 0 });
-
-    // Calcula variação percentual total
-    totais.variacaoPercentual = totais.valorInvestido > 0
-        ? ((totais.valorTotal - totais.valorInvestido) / totais.valorInvestido) * 100
-        : 0;
-
-    res.json({
-      carteira: carteiraCompleta,
-      totais: {
-        ...totais,
-        variacaoPercentual: Number(totais.variacaoPercentual.toFixed(2))
-      }
-    });
+    res.json(carteiraCompleta);
   } catch (error) {
     console.error('Erro ao listar carteira:', error);
     res.status(500).json({ message: 'Erro interno do servidor' });

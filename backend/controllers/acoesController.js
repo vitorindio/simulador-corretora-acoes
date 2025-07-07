@@ -1,5 +1,5 @@
 const db = require('../config/database');
-const {getPrecosAcoes} = require("../services/acoesService");
+const {getPrecosAcoes, getAcoesComVariação} = require("../services/acoesService");
 
 const interesse = async (req, res) => {
   try {
@@ -39,7 +39,7 @@ const interesse = async (req, res) => {
 const deletar = async (req, res) => {
   try {
     const { ticker } = req.params;
-    const result = await db.query(
+    const [result] = await db.query(
       'DELETE FROM acao_interesse WHERE id_usuario = ? AND ticker = ?',
       [req.userId, ticker]
     );
@@ -114,13 +114,17 @@ const ordensUsuario = async (req, res) => {
       ORDER BY ordem ASC
     `, [req.userId]);
 
-    console.log('Ações de interesse do usuário:', acoesInteresse);
+    // Busca o minuto simulado da query string
+    const minuto = req.query.minuto ? parseInt(req.query.minuto, 10) : null;
+    if (minuto === null || isNaN(minuto) || minuto < 0 || minuto > 59) {
+      return res.status(400).json({ message: 'Parâmetro minuto (0-59) é obrigatório na query string.' });
+    }
 
-    // Busca os preços atuais das ações
+    // Busca os preços e variações corretos para os tickers de interesse
     const tickers = acoesInteresse.map(acao => acao.ticker);
-    const precos = await getPrecosAcoes(tickers);
+    const precos = await getAcoesComVariação({ tickers, minuto });
 
-    // Combina os dados
+    // Combina os dados mantendo a ordem de interesse
     const acoes = acoesInteresse.map(acao => ({
       ...acao,
       ...precos.find(p => p.ticker === acao.ticker)
