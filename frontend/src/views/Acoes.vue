@@ -173,7 +173,7 @@
         <h3>Adicionar Ação de Interesse</h3>
         <select v-model="novaAcaoInteresse">
           <option value="">Selecione uma ação</option>
-          <option v-for="ticker in tickersDisponiveis.filter(t => !acoes.map(a => a.ticker).includes(t))" :key="ticker" :value="ticker">{{ ticker }}</option>
+          <option v-for="ticker in tickersDisponiveis.filter(t => !acoesInteresse.includes(t))" :key="ticker" :value="ticker">{{ ticker }}</option>
         </select>
         <div class="form-actions">
           <button @click="showAdicionarAcao = false" class="btn-cancel">Cancelar</button>
@@ -191,7 +191,8 @@ export default {
   name: 'AcoesView',
   data() {
     return {
-      acoes: [],
+      acoesMercado: [], // todas as ações do mercado
+      acoesInteresse: [], // tickers de interesse do usuário
       loading: true,
       filtroBusca: '',
       filtroOrdenacao: 'ticker',
@@ -213,8 +214,8 @@ export default {
   },
   computed: {
     acoesFiltradas() {
-      let acoes = this.acoes
-
+      // Mostra apenas as ações de interesse do usuário
+      let acoes = this.acoesMercado.filter(acao => this.acoesInteresse.includes(acao.ticker))
       // Filtro de busca
       if (this.filtroBusca) {
         acoes = acoes.filter(acao => 
@@ -222,7 +223,6 @@ export default {
           (acao.nome && acao.nome.toLowerCase().includes(this.filtroBusca.toLowerCase()))
         )
       }
-
       // Ordenação
       switch (this.filtroOrdenacao) {
         case 'preco':
@@ -234,21 +234,30 @@ export default {
       }
     },
     acoesDisponiveis() {
-      return this.acoes
+      // Para o modal de compra, mostrar todas as ações do mercado
+      return this.acoesMercado
     }
   },
   async mounted() {
-    await this.loadAcoes()
+    await this.loadAcoesMercado()
+    await this.loadAcoesInteresse()
     await this.loadTickersDisponiveis()
   },
   methods: {
-    async loadAcoes() {
+    async loadAcoesMercado() {
       this.loading = true
       const token = localStorage.getItem('token')
       const config = { headers: { Authorization: `Bearer ${token}` } }
-      const response = await axios.get(`/api/acoes/interesse?minuto=${this.minutoSimulado}`, config)
-      this.acoes = response.data.acoes
+      const response = await axios.get(`/api/acoes?minuto=${this.minutoSimulado}`, config)
+      this.acoesMercado = response.data.acoes
       this.loading = false
+    },
+    async loadAcoesInteresse() {
+      // Busca os tickers de interesse do usuário
+      const token = localStorage.getItem('token')
+      const config = { headers: { Authorization: `Bearer ${token}` } }
+      const response = await axios.get(`/api/acoes/interesse?minuto=${this.minutoSimulado}`, config)
+      this.acoesInteresse = response.data.acoes.map(a => a.ticker)
     },
     async loadTickersDisponiveis() {
       const token = localStorage.getItem('token')
@@ -263,13 +272,13 @@ export default {
       await axios.post('/api/acoes/interesse', { ticker: this.novaAcaoInteresse }, config)
       this.showAdicionarAcao = false
       this.novaAcaoInteresse = ''
-      await this.loadAcoes()
+      await this.loadAcoesInteresse()
     },
     async removerInteresse(ticker) {
       const token = localStorage.getItem('token')
       const config = { headers: { Authorization: `Bearer ${token}` } }
       await axios.delete(`/api/acoes/interesse/${ticker}`, config)
-      await this.loadAcoes()
+      await this.loadAcoesInteresse()
     },
     getNomeAcao(ticker) {
       const nomes = {
@@ -335,7 +344,7 @@ export default {
     },
     async refreshAcoes() {
       this.loading = true
-      await this.loadAcoes()
+      await this.loadAcoesMercado()
     },
     formatCurrency(value) {
       return new Intl.NumberFormat('pt-BR', {
@@ -370,7 +379,7 @@ export default {
       this.minutoSimulado = (this.minutoSimulado + delta) % 60
       if (this.minutoSimulado < 0) this.minutoSimulado += 60
       localStorage.setItem('minutoSimulado', this.minutoSimulado)
-      this.loadAcoes()
+      this.loadAcoesMercado()
     }
   }
 }

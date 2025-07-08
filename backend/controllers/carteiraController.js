@@ -8,12 +8,12 @@ const listarCarteira = async (req, res) => {
     const [carteira] = await db.query(`
       SELECT 
         c.ticker,
-        c.quantidade,
-        c.preco_compra as preco_medio,
-        c.quantidade_vendido,
+        c.qtde,
+        c.preco_compra,
+        c.qtde_vendido,
         c.preco_venda
       FROM carteira c
-      WHERE c.id_usuario = ? AND c.quantidade > 0
+      WHERE c.id_usuario = ? AND c.qtde > 0
       ORDER BY c.ticker
     `, [req.userId]);
 
@@ -31,15 +31,19 @@ const listarCarteira = async (req, res) => {
     const carteiraCompleta = carteira.map(item => {
       const preco = precos.find(p => p.ticker === item.ticker);
       const precoAtual = preco?.preco_atual || 0;
-      const valorAtual = item.quantidade * precoAtual;
-      const valorInvestido = item.quantidade * item.preco_medio;
+      const valorAtual = item.qtde * precoAtual;
+      const valorInvestido = item.qtde * item.preco_compra;
       const lucroPrejuizo = valorAtual - valorInvestido;
-      const variacaoPercentual = item.preco_medio > 0
-          ? ((precoAtual - item.preco_medio) / item.preco_medio) * 100
+      const variacaoPercentual = item.preco_compra > 0
+          ? ((precoAtual - item.preco_compra) / item.preco_compra) * 100
           : 0;
 
       return {
-        ...item,
+        ticker: item.ticker,
+        qtde: item.qtde,
+        preco_compra: item.preco_compra,
+        qtde_vendido: item.qtde_vendido,
+        preco_venda: item.preco_venda,
         preco_atual: precoAtual,
         valor_atual: valorAtual,
         valor_investido: valorInvestido,

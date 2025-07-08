@@ -11,6 +11,7 @@ const usuariosRoutes = require('./routes/usuariosRoutes');
 const acoesRoutes = require('./routes/acoesRoutes');
 const ordemRoutes = require('./routes/ordemRoutes');
 const carteiraRoutes = require('./routes/carteiraRoutes');
+const contaCorrenteRoutes = require('./routes/contaCorrenteRoutes');
 
 const app = express();
 
@@ -25,6 +26,7 @@ app.use('/api/usuario', usuariosRoutes);
 app.use('/api/acoes', acoesRoutes);
 app.use('/api/ordens', ordemRoutes);
 app.use('/api/carteira', carteiraRoutes);
+app.use('/api/conta-corrente', contaCorrenteRoutes);
 
 // Rota de teste
 app.get('/', (req, res) => {

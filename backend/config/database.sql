@@ -23,15 +23,17 @@ CREATE TABLE IF NOT EXISTS acao_interesse (
 );
 
 -- Tabela de carteira
-CREATE TABLE IF NOT EXISTS carteira (
-  id INT AUTO_INCREMENT PRIMARY KEY,
-  id_usuario INT,
-  ticker VARCHAR(10),
-  quantidade INT NOT NULL DEFAULT 0,
-  preco_compra DECIMAL(10,2) NOT NULL,
-  quantidade_vendido INT DEFAULT 0,
-  preco_venda DECIMAL(10,2),
-  FOREIGN KEY (id_usuario) REFERENCES usuario(id)
+DROP TABLE IF EXISTS carteira;
+
+CREATE TABLE carteira (
+  id_usuario INT NOT NULL,
+  ticker VARCHAR(10) NOT NULL,
+  qtde INT NOT NULL,
+  preco_compra DECIMAL(10, 2) NOT NULL,
+  preco_venda DECIMAL(10, 2),
+  qtde_vendido INT DEFAULT 0,
+  PRIMARY KEY (id_usuario, ticker),
+  FOREIGN KEY (id_usuario) REFERENCES usuario(id) ON DELETE CASCADE
 );
 
 -- Tabela de ordens de compra
@@ -65,11 +67,15 @@ CREATE TABLE IF NOT EXISTS ordem_venda (
 );
 
 -- Tabela de conta corrente
-CREATE TABLE IF NOT EXISTS conta_corrente (
+DROP TABLE IF EXISTS conta_corrente;
+
+CREATE TABLE conta_corrente (
   id INT AUTO_INCREMENT PRIMARY KEY,
-  id_usuario INT,
+  id_usuario INT NOT NULL,
   historico VARCHAR(255) NOT NULL,
   data_hora DATETIME NOT NULL,
-  valor DECIMAL(10,2) NOT NULL,
-  FOREIGN KEY (id_usuario) REFERENCES usuario(id)
-); 
+  tipo ENUM('deposito', 'retirada') NOT NULL,
+  valor DECIMAL(10, 2) NOT NULL,
+  saldo DECIMAL(10, 2) NOT NULL,
+  FOREIGN KEY (id_usuario) REFERENCES usuario(id) ON DELETE CASCADE
+);

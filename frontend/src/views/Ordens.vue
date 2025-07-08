@@ -261,9 +261,10 @@ export default {
         const config = {
           headers: { Authorization: `Bearer ${token}` }
         }
-
-        const response = await axios.get('http://localhost:3000/api/acoes', config)
-        this.acoesDisponiveis = response.data
+        // Usa o minuto simulado se existir, senão o minuto atual
+        const minuto = Number(localStorage.getItem('minutoSimulado')) || new Date().getMinutes();
+        const response = await axios.get(`http://localhost:3000/api/acoes?minuto=${minuto}`, config)
+        this.acoesDisponiveis = response.data.acoes // resposta é { acoes: [...] }
       } catch (error) {
         console.error('Erro ao carregar ações:', error)
       }

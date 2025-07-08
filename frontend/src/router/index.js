@@ -38,6 +38,11 @@ const routes = [
     name: 'Acoes',
     component: AcoesView,
     meta: { requiresAuth: true }
+  },
+  {
+    path: '/conta-corrente',
+    name: 'ContaCorrente',
+    component: () => import('../views/ContaCorrente.vue')
   }
 ]
 

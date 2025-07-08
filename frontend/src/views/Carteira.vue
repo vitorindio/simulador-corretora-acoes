@@ -16,7 +16,10 @@
     <main class="main-content">
       <div class="carteira-header">
         <h2>Minha Carteira</h2>
-        <button @click="showNovaOrdem = true" class="btn-primary">Nova Ordem</button>
+        <div>
+          <button @click="showNovaOrdem = true" class="btn-primary">Nova Ordem</button>
+          <button @click="irParaContaCorrente" class="btn-secondary" style="margin-left: 1rem;">Conta Corrente</button>
+        </div>
       </div>
 
       <!-- Resumo da Carteira -->
@@ -207,9 +210,9 @@ export default {
         const config = {
           headers: { Authorization: `Bearer ${token}` }
         }
-
-        const response = await axios.get('http://localhost:3000/api/acoes', config)
-        this.acoesDisponiveis = response.data
+        const minuto = Number(localStorage.getItem('minutoSimulado')) || new Date().getMinutes();
+        const response = await axios.get(`http://localhost:3000/api/acoes?minuto=${minuto}`, config)
+        this.acoesDisponiveis = response.data.acoes
       } catch (error) {
         console.error('Erro ao carregar ações:', error)
       }
@@ -291,6 +294,10 @@ export default {
     logout() {
       localStorage.removeItem('token')
       this.$router.push('/login')
+    },
+
+    irParaContaCorrente() {
+      this.$router.push('/conta-corrente')
     },
 
     avancarMinuto(delta = 1) {
@@ -388,6 +395,21 @@ export default {
 }
 
 .btn-primary:hover {
+  opacity: 0.9;
+}
+
+.btn-secondary {
+  background: #4CAF50; /* A green color for the secondary button */
+  color: white;
+  border: none;
+  padding: 0.75rem 1.5rem;
+  border-radius: 5px;
+  cursor: pointer;
+  font-weight: 500;
+  transition: opacity 0.3s;
+}
+
+.btn-secondary:hover {
   opacity: 0.9;
 }
 
