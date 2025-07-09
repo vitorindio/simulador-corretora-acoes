@@ -199,7 +199,7 @@ export default {
       this.loading = true
       const token = localStorage.getItem('token')
       const config = { headers: { Authorization: `Bearer ${token}` } }
-      const response = await axios.get(`/api/carteira?minuto=${this.minutoSimulado}`, config)
+      const response = await axios.get(`http://localhost:3000/api/carteira?minuto=${this.minutoSimulado}`, config)
       this.carteira = response.data
       this.loading = false
     },

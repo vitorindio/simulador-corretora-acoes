@@ -256,7 +256,7 @@ export default {
       // Busca os tickers de interesse do usuário
       const token = localStorage.getItem('token')
       const config = { headers: { Authorization: `Bearer ${token}` } }
-      const response = await axios.get(`/api/acoes/interesse?minuto=${this.minutoSimulado}`, config)
+      const response = await axios.get(`http://localhost:3000/api/acoes?minuto=${this.minutoSimulado}`, config)
       this.acoesInteresse = response.data.acoes.map(a => a.ticker)
     },
     async loadTickersDisponiveis() {

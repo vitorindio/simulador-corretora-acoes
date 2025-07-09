@@ -75,7 +75,7 @@ CREATE TABLE IF NOT EXISTS conta_corrente (
   data_hora DATETIME NOT NULL,
   tipo ENUM('deposito', 'retirada') NOT NULL,
   valor DECIMAL(10, 2) NOT NULL,
-  saldo DECIMAL(10, 2) NOT NULL,
+  saldo DECIMAL(10, 2) NOT NULL DEFAULT 0.00,
   FOREIGN KEY (id_usuario) REFERENCES usuario(id) ON DELETE CASCADE
 );
 
@@ -90,5 +90,6 @@ CREATE INDEX idx_acoes_interesse_usuario ON acoes_interesse(id_usuario);
 -- Exemplo de inserts para conta_corrente
 INSERT INTO conta_corrente (id_usuario, historico, data_hora, tipo, valor, saldo) VALUES
 (1, 'Depósito inicial', NOW(), 'deposito', 10000.00, 10000.00),
-(1, 'Compra PETR4', NOW(), 'retirada', 32820.00, -22820.00),
-(1, 'Venda ITUB4', NOW(), 'deposito', 15000.00, -7820.00); 
+(1, 'Compra PETR4', NOW(), 'retirada', -32820.00, -22820.00),
+(1, 'Venda ITUB4', NOW(), 'deposito', 15000.00, -7820.00);
+

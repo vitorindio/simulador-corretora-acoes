@@ -127,9 +127,9 @@ export default {
       const token = localStorage.getItem('token')
       const config = { headers: { Authorization: `Bearer ${token}` } }
       // Ajuste o endpoint conforme seu backend
-      const response = await axios.get('/api/conta-corrente', config)
+      const response = axios.get('/api/conta-corrente', config)
       // Espera-se que o backend já retorne saldo após cada lançamento
-      this.lancamentos = response.data.lancamentos || []
+      this.lancamentos = response.data.lancamentos || [] //Erro está
       this.loading = false
     },
     async registrarDeposito() {

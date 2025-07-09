@@ -11,7 +11,8 @@ const calcularPrecoMedio = (quantidadeAtual, precoAtual, quantidadeNova, precoNo
 const criarOrdemCompra = async (req, res) => {
   try {
     const { ticker, quantidade, modo, preco_referencia } = req.body;
-    const id_usuario = req.userId;
+    //const id_usuario = req.userId;
+    const id_usuario = 1;
 
     // Validações básicas
     if (!ticker || !quantidade || !modo) {

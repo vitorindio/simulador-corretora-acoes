@@ -23,7 +23,7 @@ INSERT INTO ordem_venda (id_usuario, data_hora, ticker, quantidade, modo, preco_
 (1, NOW(), 'BBDC4', 150, 'limite', 11.43, false);
 
 -- Inserir dados na carteira
-INSERT INTO carteira (id_usuario, ticker, quantidade, preco_compra, quantidade_vendido, preco_venda) VALUES
+INSERT INTO carteira (id_usuario, ticker, qtde, preco_compra, qtde_vendido, preco_venda) VALUES
 (1, 'PETR4', 1000, 32.82, 0, NULL),
 (1, 'VALE3', 500, 54.88, 0, NULL),
 (1, 'ITUB4', 2000, 29.59, 500, 30.00);
