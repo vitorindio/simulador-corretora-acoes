@@ -200,7 +200,13 @@ export default {
       const token = localStorage.getItem('token')
       const config = { headers: { Authorization: `Bearer ${token}` } }
       const response = await axios.get(`http://localhost:3000/api/carteira?minuto=${this.minutoSimulado}`, config)
-      this.carteira = response.data
+      // Mapeia os campos do backend para os nomes esperados no frontend
+      this.carteira = response.data.map(acao => ({
+        ...acao,
+        quantidade: acao.qtde, // backend retorna qtde, frontend espera quantidade
+        preco_compra: acao.preco_compra ?? 0,
+        preco_atual: acao.preco_atual ?? 0
+      }))
       this.loading = false
     },
 

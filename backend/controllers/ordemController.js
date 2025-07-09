@@ -48,7 +48,6 @@ const criarOrdemCompra = async (req, res) => {
 
 const executarOrdemCompra = async (req, res) => {
   try {
-    console.log('req.userId:', req.userId);
     const { id } = req.params;
     const id_usuario = req.userId;
     console.log(`Executando ordem de compra ${id} para usuário ${id_usuario}`);
@@ -84,6 +83,18 @@ const executarOrdemCompra = async (req, res) => {
         precoAtual : // Usa o preço atual do mercado
         ordem.preco_referencia;
 
+      // Busca saldo atual da conta corrente
+      const [ultimoLanc] = await db.query(
+        'SELECT saldo FROM conta_corrente WHERE id_usuario = ? ORDER BY data_hora DESC, id DESC LIMIT 1',
+        [id_usuario]
+      );
+      const saldoAnterior = ultimoLanc.length > 0 ? Number(ultimoLanc[0].saldo) : 0;
+      const valor_total = ordem.quantidade * preco_execucao;
+      if (saldoAnterior < valor_total) {
+        return res.status(400).json({ message: 'Saldo insuficiente na conta corrente para realizar a compra.' });
+      }
+      const novoSaldo = saldoAnterior - valor_total;
+
       // Atualiza ordem
       await db.query(
         'UPDATE ordem_compra SET executada = true, preco_execucao = ?, data_hora_execucao = NOW() WHERE id = ?',
@@ -111,18 +122,17 @@ const executarOrdemCompra = async (req, res) => {
           ordem.quantidade,
           preco_execucao
         );
-        
+
         await db.query(
           'UPDATE carteira SET qtde = qtde + ?, preco_compra = ? WHERE id_usuario = ?',
           [ordem.quantidade, novo_preco_medio, carteira.id]
         );
       }
 
-      // Registra movimentação na conta
-      const valor_total = ordem.quantidade * preco_execucao;
+      // Registra movimentação na conta corrente como retirada
       await db.query(
-        'INSERT INTO conta_corrente (id_usuario, historico, data_hora, valor) VALUES (?, ?, NOW(), ?)',
-        [id_usuario, `Compra ${ordem.ticker}`, -valor_total]
+        'INSERT INTO conta_corrente (id_usuario, historico, data_hora, tipo, valor, saldo) VALUES (?, ?, NOW(), ?, ?, ?)',
+        [id_usuario, `Compra ${ordem.ticker}`, 'retirada', valor_total, novoSaldo]
       );
 
       res.json({ 

@@ -26,7 +26,7 @@
           <div class="card-content">
             <div class="stat">
               <span class="stat-label">Total Investido:</span>
-              <span class="stat-value">R$ {{ formatCurrency(carteiraTotal) }}</span>
+              <span class="stat-value"> {{ formatCurrency(carteiraTotal) }}</span>
             </div>
             <div class="stat">
               <span class="stat-label">Posições:</span>
@@ -34,7 +34,7 @@
             </div>
             <div class="stat">
               <span class="stat-label">Saldo Disponível:</span>
-              <span class="stat-value">R$ {{ formatCurrency(saldoDisponivel) }}</span>
+              <span class="stat-value"> {{ formatCurrency(saldoDisponivel) }}</span>
             </div>
           </div>
         </div>
@@ -54,7 +54,7 @@
                 </div>
                 <div class="order-details">
                   <span>{{ ordem.quantidade }} ações</span>
-                  <span>R$ {{ formatCurrency(ordem.preco_execucao || 0) }}</span>
+                  <span> {{ formatCurrency(ordem.preco_execucao || 0) }}</span>
                 </div>
               </div>
             </div>
@@ -72,7 +72,7 @@
               <div v-for="acao in acoesEmAlta.slice(0, 5)" :key="acao.ticker" class="stock-item">
                 <div class="stock-info">
                   <span class="stock-ticker">{{ acao.ticker }}</span>
-                  <span class="stock-price">R$ {{ formatCurrency(acao.preco_atual) }}</span>
+                  <span class="stock-price"> {{ formatCurrency(acao.preco_atual) }}</span>
                 </div>
                 <div class="stock-change positive">
                   +{{ acao.variacao_percentual }}%
@@ -93,7 +93,7 @@
               <div v-for="acao in acoesEmBaixa.slice(0, 5)" :key="acao.ticker" class="stock-item">
                 <div class="stock-info">
                   <span class="stock-ticker">{{ acao.ticker }}</span>
-                  <span class="stock-price">R$ {{ formatCurrency(acao.preco_atual) }}</span>
+                  <span class="stock-price"> {{ formatCurrency(acao.preco_atual) }}</span>
                 </div>
                 <div class="stock-change negative">
                   {{ acao.variacao_percentual }}%
@@ -139,10 +139,17 @@ export default {
         // Carregar dados da carteira
         try {
           const carteiraResponse = await axios.get(`/api/carteira?minuto=${minuto}`, config)
+          console.log('Dados da carteira:', carteiraResponse.data) // Debug
+          
           this.carteiraPosicoes = carteiraResponse.data.length
           this.carteiraTotal = carteiraResponse.data.reduce((total, item) => {
-            return total + (item.qtde * item.preco_compra)
+            // Usar o valor_investido que já vem calculado da API
+            const valorInvestido = Number(item.valor_investido) || 0
+            console.log(`Item ${item.ticker}: qtde=${item.qtde}, preco_compra=${item.preco_compra}, valor_investido=${valorInvestido}`) // Debug
+            return total + valorInvestido
           }, 0)
+          
+          console.log('Total investido calculado:', this.carteiraTotal) // Debug
         } catch (carteiraError) {
           console.error('Erro ao carregar carteira:', carteiraError)
           this.carteiraPosicoes = 0

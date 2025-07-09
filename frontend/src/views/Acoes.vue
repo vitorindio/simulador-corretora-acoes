@@ -18,6 +18,11 @@
         
         <h2>Mercado de Ações</h2>
         <div class="header-actions">
+          <span class="relogio-simulado">Horário simulado: {{ horaSimulada }}</span>
+          <button @click="avancarMinuto(-5)" class="btn-secondary">-5 min</button>
+          <button @click="avancarMinuto(-1)" class="btn-secondary">-1 min</button>
+          <button @click="avancarMinuto(1)" class="btn-secondary">+1 min</button>
+          <button @click="avancarMinuto(5)" class="btn-secondary">+5 min</button>
           <button @click="refreshAcoes" class="btn-secondary">Atualizar Preços</button>
           <button @click="avancarMinuto(1)" class="btn-secondary">+1 min</button>
           <button @click="avancarMinuto(5)" class="btn-secondary">+5 min</button>
@@ -56,39 +61,24 @@
               <h3>{{ acao.ticker }}</h3>
               <span class="acao-nome">{{ acao.nome || 'Ação' }}</span>
             </div>
-            
             <div class="acao-preco">
-              <span class="preco-atual"> {{ formatCurrency(acao.preco_atual) }}</span>
-              <span class="preco-anterior"> {{ formatCurrency(acao.preco_anterior || acao.preco_atual) }}</span>
+              <span class="preco-atual-label">Preço Atual:</span>
+              <span class="preco-atual">{{ formatCurrency(acao.preco_atual) }}</span>
             </div>
-            
+            <div class="acao-fechamento">
+              <span class="fechamento-label">Fechamento Anterior:</span>
+              <span class="fechamento-valor">{{ formatCurrency(acao.fechamento) }}</span>
+            </div>
             <div class="acao-variacao">
-              <span 
-                class="variacao-valor" 
-                :class="getVariacaoClass(acao.variacao_percentual)"
-              >
-                {{ formatVariacao(acao.variacao_percentual) }}
+              <span class="variacao-label">Variação R$:</span>
+              <span class="variacao-valor" :class="getVariacaoClass(acao.variacao_nominal)">
+                {{ formatCurrency(acao.variacao_nominal) }}
               </span>
-              <span class="variacao-percentual">
+              <span class="variacao-label">Variação %:</span>
+              <span class="variacao-percentual" :class="getVariacaoClass(acao.variacao_percentual)">
                 {{ formatPercentual(acao.variacao_percentual) }}
               </span>
             </div>
-            
-            <div class="acao-info">
-              <div class="info-item">
-                <span class="label">Volume:</span>
-                <span class="value">{{ formatVolume(acao.volume) }}</span>
-              </div>
-              <div class="info-item">
-                <span class="label">Máximo:</span>
-                <span class="value"> {{ formatCurrency(acao.preco_maximo || acao.preco_atual) }}</span>
-              </div>
-              <div class="info-item">
-                <span class="label">Mínimo:</span>
-                <span class="value"> {{ formatCurrency(acao.preco_minimo || acao.preco_atual) }}</span>
-              </div>
-            </div>
-            
             <div class="acao-actions">
               <button @click="comprarAcao(acao)" class="btn-compra">Comprar</button>
               <button @click="venderAcao(acao)" class="btn-venda">Vender</button>
@@ -239,6 +229,12 @@ export default {
     acoesDisponiveis() {
       // Para o modal de compra, mostrar todas as ações do mercado
       return this.acoesMercado
+    },
+    horaSimulada() {
+      // Exibe o horário simulado no formato 14:MM
+      const baseHour = 14;
+      const min = this.minutoSimulado.toString().padStart(2, '0');
+      return `${baseHour}:${min}`;
     }
   },
   async mounted() {
@@ -251,13 +247,11 @@ export default {
       this.loading = true
       const token = localStorage.getItem('token')
       const config = { headers: { Authorization: `Bearer ${token}` } }
-      console.log(token);
       const response = await axios.get(`http://localhost:3000/api/acoes?minuto=${this.minutoSimulado}`, config)
       this.acoesMercado = response.data.acoes
       this.loading = false
     },
     async loadAcoesInteresse() {
-      // Busca os tickers de interesse do usuário
       const token = localStorage.getItem('token')
       const config = { headers: { Authorization: `Bearer ${token}` } }
       const response = await axios.get(`http://localhost:3000/api/acoes?minuto=${this.minutoSimulado}`, config)
@@ -349,6 +343,7 @@ export default {
     async refreshAcoes() {
       this.loading = true
       await this.loadAcoesMercado()
+      await this.loadAcoesInteresse()
     },
     formatCurrency(value) {
       return new Intl.NumberFormat('pt-BR', {
@@ -383,7 +378,7 @@ export default {
       this.minutoSimulado = (this.minutoSimulado + delta) % 60
       if (this.minutoSimulado < 0) this.minutoSimulado += 60
       localStorage.setItem('minutoSimulado', this.minutoSimulado)
-      this.loadAcoesMercado()
+      this.refreshAcoes()
     }
   }
 }
@@ -465,6 +460,12 @@ export default {
 .header-actions {
   display: flex;
   gap: 1rem;
+}
+
+.relogio-simulado {
+  font-size: 1rem;
+  color: #666;
+  font-weight: 500;
 }
 
 .btn-primary {
@@ -579,18 +580,36 @@ export default {
   margin-bottom: 1rem;
 }
 
+.preco-atual-label {
+  display: block;
+  font-size: 0.9rem;
+  color: #666;
+  margin-bottom: 0.25rem;
+}
+
 .preco-atual {
   display: block;
   font-size: 1.5rem;
   font-weight: bold;
   color: #333;
+}
+
+.acao-fechamento {
+  margin-bottom: 1rem;
+}
+
+.fechamento-label {
+  display: block;
+  font-size: 0.9rem;
+  color: #666;
   margin-bottom: 0.25rem;
 }
 
-.preco-anterior {
-  color: #666;
-  font-size: 0.9rem;
-  text-decoration: line-through;
+.fechamento-valor {
+  display: block;
+  font-size: 1.1rem;
+  font-weight: 500;
+  color: #333;
 }
 
 .acao-variacao {
@@ -598,6 +617,12 @@ export default {
   justify-content: space-between;
   align-items: center;
   margin-bottom: 1rem;
+}
+
+.variacao-label {
+  font-size: 0.9rem;
+  color: #666;
+  margin-right: 0.5rem;
 }
 
 .variacao-valor {
@@ -620,6 +645,18 @@ export default {
 .variacao-percentual {
   font-size: 0.9rem;
   font-weight: 500;
+}
+
+.variacao-percentual.positive {
+  color: #28a745;
+}
+
+.variacao-percentual.negative {
+  color: #dc3545;
+}
+
+.variacao-percentual.neutral {
+  color: #666;
 }
 
 .acao-info {
