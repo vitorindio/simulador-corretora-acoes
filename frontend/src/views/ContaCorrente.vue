@@ -43,7 +43,7 @@
           <tbody>
             <tr v-for="(lanc) in lancamentos" :key="lanc.id">
               <td>{{ formatDate(lanc.data_hora) }}</td>
-              <td>{{ lanc.descricao }}</td>
+              <td>{{ lanc.historico }}</td>
               <td :class="lanc.tipo === 'deposito' ? 'positive' : 'negative'">
                 {{ lanc.tipo === 'deposito' ? 'Depósito' : 'Retirada' }}
               </td>
@@ -123,21 +123,27 @@ export default {
   },
   methods: {
     async loadLancamentos() {
-      this.loading = true
-      const token = localStorage.getItem('token')
-      const config = { headers: { Authorization: `Bearer ${token}` } }
-      // Ajuste o endpoint conforme seu backend
-      const response = axios.get('/api/conta-corrente', config)
-      // Espera-se que o backend já retorne saldo após cada lançamento
-      this.lancamentos = response.data.lancamentos || [] //Erro está
-      this.loading = false
+      try {
+        this.loading = true
+        const token = localStorage.getItem('token')
+        const config = { headers: { Authorization: `Bearer ${token}` } }
+        // Ajuste o endpoint conforme seu backend
+        const response = await axios.get('/api/conta-corrente', config)
+        // Espera-se que o backend já retorne saldo após cada lançamento
+        this.lancamentos = response.data.lancamentos || response.data || []
+      } catch (error) {
+        console.error('Erro ao carregar lançamentos:', error)
+        this.lancamentos = []
+      } finally {
+        this.loading = false
+      }
     },
     async registrarDeposito() {
       if (!this.descDeposito || !this.valorDeposito || this.valorDeposito <= 0) return
       const token = localStorage.getItem('token')
       const config = { headers: { Authorization: `Bearer ${token}` } }
       await axios.post('/api/conta-corrente/deposito', {
-        descricao: this.descDeposito,
+        historico: this.descDeposito,
         valor: this.valorDeposito
       }, config)
       this.showDeposito = false
@@ -150,7 +156,7 @@ export default {
       const token = localStorage.getItem('token')
       const config = { headers: { Authorization: `Bearer ${token}` } }
       await axios.post('/api/conta-corrente/retirada', {
-        descricao: this.descRetirada,
+        historico: this.descRetirada,
         valor: this.valorRetirada
       }, config)
       this.showRetirada = false

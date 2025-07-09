@@ -99,21 +99,21 @@ const executarOrdemCompra = async (req, res) => {
       if (carteiras.length === 0) {
         // Nova posição
         await db.query(
-          'INSERT INTO carteira (id_usuario, ticker, quantidade, preco_compra) VALUES (?, ?, ?, ?)',
+          'INSERT INTO carteira (id_usuario, ticker, qtde, preco_compra) VALUES (?, ?, ?, ?)',
           [id_usuario, ordem.ticker, ordem.quantidade, preco_execucao]
         );
       } else {
         // Atualiza posição existente
         const carteira = carteiras[0];
         const novo_preco_medio = calcularPrecoMedio(
-          carteira.quantidade,
+          carteira.qtde,
           carteira.preco_compra,
           ordem.quantidade,
           preco_execucao
         );
 
         await db.query(
-          'UPDATE carteira SET quantidade = quantidade + ?, preco_compra = ? WHERE id = ?',
+          'UPDATE carteira SET qtde = qtde + ?, preco_compra = ? WHERE id = ?',
           [ordem.quantidade, novo_preco_medio, carteira.id]
         );
       }
@@ -206,7 +206,7 @@ const criarOrdemVenda = async (req, res) => {
 
     // Verifica se tem quantidade suficiente na carteira
     const [carteiras] = await db.query(
-      'SELECT * FROM carteira WHERE id_usuario = ? AND ticker = ? AND quantidade >= ?',
+      'SELECT * FROM carteira WHERE id_usuario = ? AND ticker = ? AND qtde >= ?',
       [id_usuario, ticker, quantidade]
     );
 
@@ -284,13 +284,13 @@ const executarOrdemVenda = async (req, res) => {
       }
 
       const carteira = carteiras[0];
-      if (carteira.quantidade < ordem.quantidade) {
+      if (carteira.qtde < ordem.quantidade) {
         return res.status(400).json({ message: 'Quantidade insuficiente na carteira' });
       }
 
       // Atualiza quantidade e registra venda
       await db.query(
-        'UPDATE carteira SET quantidade = quantidade - ?, quantidade_vendido = quantidade_vendido + ?, preco_venda = ? WHERE id = ?',
+        'UPDATE carteira SET qtde = qtde - ?, qtde_vendido = qtde_vendido + ?, preco_venda = ? WHERE id = ?',
         [ordem.quantidade, ordem.quantidade, preco_execucao, carteira.id]
       );
 
