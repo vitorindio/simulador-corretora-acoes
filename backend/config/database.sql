@@ -76,6 +76,6 @@ CREATE TABLE conta_corrente (
   data_hora DATETIME NOT NULL,
   tipo ENUM('deposito', 'retirada') NOT NULL,
   valor DECIMAL(10, 2) NOT NULL,
-  saldo DECIMAL(10, 2) NOT NULL,
+  saldo DECIMAL(10, 2) NOT NULL DEFAULT 0,
   FOREIGN KEY (id_usuario) REFERENCES usuario(id) ON DELETE CASCADE
 );

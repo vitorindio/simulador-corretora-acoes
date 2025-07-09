@@ -127,10 +127,17 @@ export default {
         this.loading = true
         const token = localStorage.getItem('token')
         const config = { headers: { Authorization: `Bearer ${token}` } }
-        // Ajuste o endpoint conforme seu backend
+        
         const response = await axios.get('/api/conta-corrente', config)
-        // Espera-se que o backend já retorne saldo após cada lançamento
-        this.lancamentos = response.data.lancamentos || response.data || []
+        
+        // Verifica se a resposta tem a estrutura esperada
+        if (response.data && response.data.lancamentos) {
+          this.lancamentos = response.data.lancamentos
+        } else if (Array.isArray(response.data)) {
+          this.lancamentos = response.data
+        } else {
+          this.lancamentos = []
+        }
       } catch (error) {
         console.error('Erro ao carregar lançamentos:', error)
         this.lancamentos = []

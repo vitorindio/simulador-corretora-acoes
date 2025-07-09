@@ -24,13 +24,15 @@ const registrarDeposito = async (req, res) => {
     if (!historico || !valor || valor <= 0) {
       return res.status(400).json({ message: 'Histórico e valor positivo são obrigatórios.' });
     }
+    
     // Busca saldo atual
-    const [[ultimo]] = await db.query(
+    const [ultimo] = await db.query(
       'SELECT saldo FROM conta_corrente WHERE id_usuario = ? ORDER BY data_hora DESC, id DESC LIMIT 1',
       [req.userId]
     );
-    const saldoAnterior = ultimo ? Number(ultimo.saldo) : 0;
+    const saldoAnterior = ultimo.length > 0 ? Number(ultimo[0].saldo) : 0;
     const novoSaldo = saldoAnterior + Number(valor);
+    
     await db.query(
       'INSERT INTO conta_corrente (id_usuario, historico, data_hora, tipo, valor, saldo) VALUES (?, ?, NOW(), ?, ?, ?)',
       [req.userId, historico, 'deposito', valor, novoSaldo]
@@ -49,13 +51,15 @@ const registrarRetirada = async (req, res) => {
     if (!historico || !valor || valor <= 0) {
       return res.status(400).json({ message: 'Histórico e valor positivo são obrigatórios.' });
     }
+    
     // Busca saldo atual
-    const [[ultimo]] = await db.query(
+    const [ultimo] = await db.query(
       'SELECT saldo FROM conta_corrente WHERE id_usuario = ? ORDER BY data_hora DESC, id DESC LIMIT 1',
       [req.userId]
     );
-    const saldoAnterior = ultimo ? Number(ultimo.saldo) : 0;
+    const saldoAnterior = ultimo.length > 0 ? Number(ultimo[0].saldo) : 0;
     const novoSaldo = saldoAnterior - Number(valor);
+    
     await db.query(
       'INSERT INTO conta_corrente (id_usuario, historico, data_hora, tipo, valor, saldo) VALUES (?, ?, NOW(), ?, ?, ?)',
       [req.userId, historico, 'retirada', valor, novoSaldo]

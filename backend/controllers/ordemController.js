@@ -99,6 +99,7 @@ const executarOrdemCompra = async (req, res) => {
         // Nova posição
         await db.query(
           'INSERT INTO carteira (id_usuario, ticker, qtde, preco_compra) VALUES (?, ?, ?, ?)',
+          'INSERT INTO carteira (id_usuario, ticker, qtde, preco_compra) VALUES (?, ?, ?, ?)',
           [id_usuario, ordem.ticker, ordem.quantidade, preco_execucao]
         );
       } else {
