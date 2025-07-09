@@ -55,8 +55,8 @@
             </div>
             
             <div class="acao-preco">
-              <span class="preco-atual">R$ {{ formatCurrency(acao.preco_atual) }}</span>
-              <span class="preco-anterior">R$ {{ formatCurrency(acao.preco_anterior || acao.preco_atual) }}</span>
+              <span class="preco-atual"> {{ formatCurrency(acao.preco_atual) }}</span>
+              <span class="preco-anterior"> {{ formatCurrency(acao.preco_anterior || acao.preco_atual) }}</span>
             </div>
             
             <div class="acao-variacao">
@@ -78,11 +78,11 @@
               </div>
               <div class="info-item">
                 <span class="label">Máximo:</span>
-                <span class="value">R$ {{ formatCurrency(acao.preco_maximo || acao.preco_atual) }}</span>
+                <span class="value"> {{ formatCurrency(acao.preco_maximo || acao.preco_atual) }}</span>
               </div>
               <div class="info-item">
                 <span class="label">Mínimo:</span>
-                <span class="value">R$ {{ formatCurrency(acao.preco_minimo || acao.preco_atual) }}</span>
+                <span class="value"> {{ formatCurrency(acao.preco_minimo || acao.preco_atual) }}</span>
               </div>
             </div>
             
@@ -115,7 +115,7 @@
             <select id="ticker" v-model="novaOrdem.ticker" required>
               <option value="">Selecione uma ação</option>
               <option v-for="acao in acoesDisponiveis" :key="acao.ticker" :value="acao.ticker">
-                {{ acao.ticker }} - R$ {{ formatCurrency(acao.preco_atual) }}
+                {{ acao.ticker }} {{ formatCurrency(acao.preco_atual) }}
               </option>
             </select>
           </div>

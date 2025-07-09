@@ -82,12 +82,12 @@
               
               <div v-if="ordem.modo === 'limite'" class="detail-item">
                 <span class="label">Preço Limite:</span>
-                <span class="value">R$ {{ formatCurrency(ordem.preco_referencia || ordem.preco_repasse) }}</span>
+                <span class="value"> {{ formatCurrency(ordem.preco_referencia || ordem.preco_repasse) }}</span>
               </div>
               
               <div v-if="ordem.executada" class="detail-item">
                 <span class="label">Preço Execução:</span>
-                <span class="value">R$ {{ formatCurrency(ordem.preco_execucao) }}</span>
+                <span class="value"> {{ formatCurrency(ordem.preco_execucao) }}</span>
               </div>
               
               <div v-if="ordem.executada" class="detail-item">

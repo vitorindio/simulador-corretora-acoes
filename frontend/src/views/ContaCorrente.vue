@@ -48,7 +48,7 @@
                 {{ lanc.tipo === 'deposito' ? 'Depósito' : 'Retirada' }}
               </td>
               <td :class="lanc.tipo === 'deposito' ? 'positive' : 'negative'">
-                {{ lanc.tipo === 'deposito' ? '+' : '-' }}R$ {{ formatCurrency(lanc.valor) }}
+                {{ lanc.tipo === 'deposito' ? '+' : '-' }} {{ formatCurrency(lanc.valor) }}
               </td>
               <td>{{ formatCurrency(lanc.saldo) }}</td>
             </tr>
