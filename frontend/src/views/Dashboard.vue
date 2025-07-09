@@ -133,16 +133,30 @@ export default {
           headers: { Authorization: `Bearer ${token}` }
         }
 
+        // Obter minuto simulado (ou usar minuto atual)
+        const minuto = Number(localStorage.getItem('minutoSimulado')) || new Date().getMinutes()
+
         // Carregar dados da carteira
-        const carteiraResponse = await axios.get('http://localhost:3000/api/carteira', config)
-        this.carteiraPosicoes = carteiraResponse.data.length
-        this.carteiraTotal = carteiraResponse.data.reduce((total, item) => {
-          return total + (item.quantidade * item.preco_compra)
-        }, 0)
+        try {
+          const carteiraResponse = await axios.get(`/api/carteira?minuto=${minuto}`, config)
+          this.carteiraPosicoes = carteiraResponse.data.length
+          this.carteiraTotal = carteiraResponse.data.reduce((total, item) => {
+            return total + (item.qtde * item.preco_compra)
+          }, 0)
+        } catch (carteiraError) {
+          console.error('Erro ao carregar carteira:', carteiraError)
+          this.carteiraPosicoes = 0
+          this.carteiraTotal = 0
+        }
 
         // Carregar últimas ordens
-        const ordensResponse = await axios.get('http://localhost:3000/api/ordens/pendentes', config)
-        this.ultimasOrdens = ordensResponse.data
+        try {
+          const ordensResponse = await axios.get('/api/ordens/pendentes', config)
+          this.ultimasOrdens = ordensResponse.data
+        } catch (ordensError) {
+          console.error('Erro ao carregar ordens:', ordensError)
+          this.ultimasOrdens = []
+        }
 
         // Carregar ações (simulado por enquanto)
         this.loadAcoes()
@@ -158,8 +172,11 @@ export default {
           headers: { Authorization: `Bearer ${token}` }
         }
 
-        const response = await axios.get('http://localhost:3000/api/acoes', config)
-        const acoes = response.data
+        // Obter minuto simulado (ou usar minuto atual)
+        const minuto = Number(localStorage.getItem('minutoSimulado')) || new Date().getMinutes()
+
+        const response = await axios.get(`/api/acoes?minuto=${minuto}`, config)
+        const acoes = response.data.acoes || response.data
 
         // Simular variação percentual
         this.acoesEmAlta = acoes

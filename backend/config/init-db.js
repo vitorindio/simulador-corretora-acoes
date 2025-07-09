@@ -3,7 +3,6 @@ const fs = require('fs').promises;
 const path = require('path');
 require('dotenv').config();
 
-
 async function initDatabase() {
   let connection;
   
@@ -14,13 +13,13 @@ async function initDatabase() {
       user: process.env.DB_USER || 'root',
       password: process.env.DB_PASSWORD || 'admin'
     });
-        console.log("Variáveis carregadas:");
-        console.log({
-          DB_HOST: process.env.DB_HOST,
-          DB_USER: process.env.DB_USER,
-          DB_PASSWORD: process.env.DB_PASSWORD
+    
+    console.log("Variáveis carregadas:");
+    console.log({
+      DB_HOST: process.env.DB_HOST,
+      DB_USER: process.env.DB_USER,
+      DB_PASSWORD: process.env.DB_PASSWORD
     });
-
 
     console.log('Conectado ao MySQL');
 
@@ -36,9 +35,8 @@ async function initDatabase() {
     await connection.query('USE simulador_corretora');
     console.log('Usando banco simulador_corretora');
 
-    // Ler os arquivos SQL
+    // Ler o arquivo database.sql
     const databaseSQL = await fs.readFile(path.join(__dirname, 'database.sql'), 'utf8');
-    const seedTestesSQL = await fs.readFile(path.join(__dirname, '../../scripts/seed-testes.sql'), 'utf8');
 
     // Dividir o SQL em comandos individuais
     const commands = databaseSQL
@@ -59,26 +57,6 @@ async function initDatabase() {
       }
     }
     console.log('Tabelas criadas com sucesso!');
-
-    // Inserir dados de teste
-    console.log('Inserindo dados de teste...');
-    const seedCommands = seedTestesSQL
-      .split(';')
-      .map(cmd => cmd.trim())
-      .filter(cmd => cmd.length > 0);
-
-    for (const cmd of seedCommands) {
-      try {
-        await connection.query(cmd);
-      } catch (error) {
-        if (error.code === 'ER_DUP_ENTRY') {
-          console.log('Dado já existe, continuando...');
-        } else {
-          throw error;
-        }
-      }
-    }
-    console.log('Dados de teste inseridos com sucesso!');
 
   } catch (error) {
     console.error('Erro ao inicializar banco de dados:', error);
