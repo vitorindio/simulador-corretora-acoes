@@ -9,6 +9,7 @@
         <router-link to="/carteira" class="nav-link active">Carteira</router-link>
         <router-link to="/ordens" class="nav-link">Ordens</router-link>
         <router-link to="/acoes" class="nav-link">Ações</router-link>
+        <router-link to="/minha-lista" class="nav-link">Minha Lista</router-link>
         <button @click="logout" class="logout-btn">Sair</button>
       </div>
     </nav>
@@ -28,15 +29,15 @@
       <div class="carteira-resumo">
         <div class="resumo-card">
           <h3>Total Investido</h3>
-          <p class="resumo-valor"> {{ formatCurrency(totalInvestido) }}</p>
+          <p class="resumo-valor" :class="getAnimacaoClass('totalInvestido')"> {{ formatCurrency(totalInvestido) }}</p>
         </div>
         <div class="resumo-card">
           <h3>Valor Atual</h3>
-          <p class="resumo-valor"> {{ formatCurrency(valorAtual) }}</p>
+          <p class="resumo-valor" :class="getAnimacaoClass('valorAtual')"> {{ formatCurrency(valorAtual) }}</p>
         </div>
         <div class="resumo-card">
           <h3>Lucro/Prejuízo</h3>
-          <p class="resumo-valor" :class="lucroPrejuizo >= 0 ? 'positive' : 'negative'">
+          <p class="resumo-valor" :class="(lucroPrejuizo >= 0 ? 'positive' : 'negative') + ' ' + getAnimacaoClass('lucroPrejuizo')">
             {{ lucroPrejuizo >= 0 ? '+' : '' }} {{ formatCurrency(lucroPrejuizo) }}
           </p>
         </div>
@@ -73,11 +74,11 @@
               </div>
               <div class="info-item">
                 <span class="label">Preço Atual:</span>
-                <span class="value"> {{ formatCurrency(acao.preco_atual || acao.preco_compra) }}</span>
+                <span class="value" :class="getAnimacaoClass('preco_atual', acao.ticker)"> {{ formatCurrency(acao.preco_atual || acao.preco_compra) }}</span>
               </div>
               <div class="info-item">
                 <span class="label">Valor Total:</span>
-                <span class="value"> {{ formatCurrency(acao.qtde * (acao.preco_atual || acao.preco_compra)) }}</span>
+                <span class="value" :class="getAnimacaoClass('valor_total', acao.ticker)"> {{ formatCurrency(acao.qtde * (acao.preco_atual || acao.preco_compra)) }}</span>
               </div>
             </div>
             
@@ -177,7 +178,13 @@ export default {
       criandoOrdem: false,
       ordemError: '',
       minutoSimulado: Number(localStorage.getItem('minutoSimulado')) || 0,
-      totalInvestidoFromAPI: 0
+      totalInvestidoFromAPI: 0,
+      valoresAnteriores: {
+        totalInvestido: 0,
+        valorAtual: 0,
+        lucroPrejuizo: 0,
+        carteira: {}
+      }
     }
   },
   computed: {
@@ -201,32 +208,51 @@ export default {
   methods: {
     async loadCarteira() {
       this.loading = true
-      const token = localStorage.getItem('token')
-      const config = { headers: { Authorization: `Bearer ${token}` } }
-      const response = await axios.get(`/api/carteira?minuto=${this.minutoSimulado}`, config)
-      console.log('Dados da carteira recebidos:', response.data) // Debug
-      
-      // Mapeia os campos do backend para os nomes esperados no frontend
-      this.carteira = response.data.map(acao => ({
-        ...acao,
-        preco_compra: acao.preco_compra ?? 0,
-        preco_atual: acao.preco_atual ?? 0
-      }))
-      
-      console.log('Carteira processada:', this.carteira) // Debug
-      
-      // Carregar total investido baseado nas ordens executadas
       try {
-        const totalInvestidoResponse = await axios.get('/api/carteira/total-investido', config)
-        console.log('Total investido da API:', totalInvestidoResponse.data) // Debug
-        this.totalInvestidoFromAPI = totalInvestidoResponse.data.total_liquido || 0
+        const token = localStorage.getItem('token')
+        const config = { headers: { Authorization: `Bearer ${token}` } }
+        const minuto = this.minutoSimulado
+        
+        // Salva valores anteriores para comparação
+        const valoresAnteriores = { ...this.valoresAnteriores }
+        this.valoresAnteriores = {
+          totalInvestido: this.totalInvestidoFromAPI,
+          valorAtual: this.valorAtual,
+          lucroPrejuizo: this.lucroPrejuizo,
+          carteira: {}
+        }
+
+        const response = await axios.get(`/api/carteira?minuto=${minuto}`, config)
+        console.log('Dados da carteira:', response.data) // Debug
+        
+        // Salva valores anteriores da carteira
+        this.valoresAnteriores.carteira = this.carteira.reduce((acc, acao) => {
+          acc[acao.ticker] = {
+            preco_atual: acao.preco_atual || acao.preco_compra,
+            valor_total: acao.qtde * (acao.preco_atual || acao.preco_compra)
+          }
+          return acc
+        }, {})
+
+        this.carteira = response.data.map(item => ({
+          ...item,
+          valorAnterior: valoresAnteriores.carteira[item.ticker]
+        }))
+
+        // Calcula total investido baseado no valor_investido da API
+        this.totalInvestidoFromAPI = this.carteira.reduce((total, item) => {
+          const valorInvestido = Number(item.valor_investido) || 0
+          console.log(`Item ${item.ticker}: valor_investido=${valorInvestido}`) // Debug
+          return total + valorInvestido
+        }, 0)
+
+        console.log('Total investido calculado:', this.totalInvestidoFromAPI) // Debug
       } catch (error) {
-        console.error('Erro ao carregar total investido:', error)
-        this.totalInvestidoFromAPI = 0
+        console.error('Erro ao carregar carteira:', error)
+        this.carteira = []
+      } finally {
+        this.loading = false
       }
-      
-      console.log('Total investido final:', this.totalInvestido) // Debug
-      this.loading = false
     },
 
     async loadAcoesDisponiveis() {
@@ -329,6 +355,59 @@ export default {
       this.minutoSimulado = minuto
       this.loadCarteira()
       this.loadAcoesDisponiveis()
+    },
+
+    // Função para verificar se um valor mudou
+    valorMudou(campo, ticker = null) {
+      if (ticker) {
+        // Para ações da carteira
+        const acao = this.carteira.find(a => a.ticker === ticker)
+        if (!acao || !acao.valorAnterior) return false
+        
+        if (campo === 'preco_atual') {
+          return acao.valorAnterior.preco_atual !== (acao.preco_atual || acao.preco_compra)
+        } else if (campo === 'valor_total') {
+          const valorAtual = acao.qtde * (acao.preco_atual || acao.preco_compra)
+          return acao.valorAnterior.valor_total !== valorAtual
+        }
+        return false
+      } else {
+        // Para valores gerais
+        const valorAnterior = this.valoresAnteriores[campo]
+        return this[campo] !== valorAnterior
+      }
+    },
+
+    // Função para verificar se um valor aumentou
+    valorAumentou(campo, ticker = null) {
+      if (ticker) {
+        // Para ações da carteira
+        const acao = this.carteira.find(a => a.ticker === ticker)
+        if (!acao || !acao.valorAnterior) return false
+        
+        if (campo === 'preco_atual') {
+          return (acao.preco_atual || acao.preco_compra) > acao.valorAnterior.preco_atual
+        } else if (campo === 'valor_total') {
+          const valorAtual = acao.qtde * (acao.preco_atual || acao.preco_compra)
+          return valorAtual > acao.valorAnterior.valor_total
+        }
+        return false
+      } else {
+        // Para valores gerais
+        const valorAnterior = this.valoresAnteriores[campo]
+        return this[campo] > valorAnterior
+      }
+    },
+
+    // Função para aplicar classe de animação
+    getAnimacaoClass(campo, ticker = null) {
+      if (!this.valorMudou(campo, ticker)) return ''
+      
+      if (this.valorAumentou(campo, ticker)) {
+        return 'valor-alterado-positivo'
+      } else {
+        return 'valor-alterado-negativo'
+      }
     }
   }
 }
@@ -666,6 +745,44 @@ export default {
   border-radius: 5px;
   margin-top: 1rem;
   text-align: center;
+}
+
+/* Estilos para animação de valores alterados */
+@keyframes piscar-positivo {
+  0% { background-color: transparent; }
+  50% { background-color: #d4edda; border-color: #28a745; }
+  100% { background-color: transparent; }
+}
+
+@keyframes piscar-negativo {
+  0% { background-color: transparent; }
+  50% { background-color: #f8d7da; border-color: #dc3545; }
+  100% { background-color: transparent; }
+}
+
+.valor-alterado-positivo {
+  animation: piscar-positivo 1s ease-in-out;
+  border-radius: 4px;
+  padding: 2px 4px;
+  border: 1px solid transparent;
+}
+
+.valor-alterado-negativo {
+  animation: piscar-negativo 1s ease-in-out;
+  border-radius: 4px;
+  padding: 2px 4px;
+  border: 1px solid transparent;
+}
+
+/* Ajustes para os valores que podem piscar */
+.resumo-valor.valor-alterado-positivo,
+.value.valor-alterado-positivo {
+  animation: piscar-positivo 1s ease-in-out;
+}
+
+.resumo-valor.valor-alterado-negativo,
+.value.valor-alterado-negativo {
+  animation: piscar-negativo 1s ease-in-out;
 }
 
 @media (max-width: 768px) {

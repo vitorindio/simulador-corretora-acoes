@@ -9,6 +9,7 @@
         <router-link to="/carteira" class="nav-link">Carteira</router-link>
         <router-link to="/ordens" class="nav-link">Ordens</router-link>
         <router-link to="/acoes" class="nav-link">Ações</router-link>
+        <router-link to="/minha-lista" class="nav-link">Minha Lista</router-link>
         <button @click="logout" class="logout-btn">Sair</button>
       </div>
     </nav>
@@ -27,7 +28,7 @@
           <div class="card-content">
             <div class="stat">
               <span class="stat-label">Total Investido:</span>
-              <span class="stat-value"> {{ formatCurrency(carteiraTotal) }}</span>
+              <span class="stat-value" :class="getAnimacaoClass('carteiraTotal')"> {{ formatCurrency(carteiraTotal) }}</span>
             </div>
             <div class="stat">
               <span class="stat-label">Posições:</span>
@@ -35,7 +36,7 @@
             </div>
             <div class="stat">
               <span class="stat-label">Saldo Disponível:</span>
-              <span class="stat-value"> {{ formatCurrency(saldoDisponivel) }}</span>
+              <span class="stat-value" :class="getAnimacaoClass('saldoDisponivel')"> {{ formatCurrency(saldoDisponivel) }}</span>
             </div>
           </div>
         </div>
@@ -72,7 +73,7 @@
               <div v-for="acao in acoesEmAlta.slice(0, 5)" :key="acao.ticker" class="stock-item">
                 <div class="stock-info">
                   <span class="stock-ticker">{{ acao.ticker }}</span>
-                  <span class="stock-price"> {{ formatCurrency(acao.preco_atual) }}</span>
+                  <span class="stock-price" :class="getAnimacaoClass('alta', acao.ticker)"> {{ formatCurrency(acao.preco_atual) }}</span>
                 </div>
                 <div class="stock-change positive">
                   +{{ acao.variacao_percentual }}%
@@ -93,7 +94,7 @@
               <div v-for="acao in acoesEmBaixa.slice(0, 5)" :key="acao.ticker" class="stock-item">
                 <div class="stock-info">
                   <span class="stock-ticker">{{ acao.ticker }}</span>
-                  <span class="stock-price"> {{ formatCurrency(acao.preco_atual) }}</span>
+                  <span class="stock-price" :class="getAnimacaoClass('baixa', acao.ticker)"> {{ formatCurrency(acao.preco_atual) }}</span>
                 </div>
                 <div class="stock-change negative">
                   {{ acao.variacao_percentual }}%
@@ -121,7 +122,13 @@ export default {
       saldoDisponivel: 10000, // Saldo inicial
       ultimasOrdens: [],
       acoesEmAlta: [],
-      acoesEmBaixa: []
+      acoesEmBaixa: [],
+      valoresAnteriores: {
+        carteiraTotal: 0,
+        saldoDisponivel: 0,
+        acoesEmAlta: {},
+        acoesEmBaixa: {}
+      }
     }
   },
   async mounted() {
@@ -135,6 +142,14 @@ export default {
           headers: { Authorization: `Bearer ${token}` }
         }
 
+        // Salva valores anteriores para comparação ANTES de atualizar
+        const valoresAnteriores = {
+          carteiraTotal: this.carteiraTotal,
+          saldoDisponivel: this.saldoDisponivel,
+          acoesEmAlta: { ...this.valoresAnteriores.acoesEmAlta },
+          acoesEmBaixa: { ...this.valoresAnteriores.acoesEmBaixa }
+        }
+
         // Obter minuto simulado (ou usar minuto atual)
         const minuto = Number(localStorage.getItem('minutoSimulado')) || new Date().getMinutes()
 
@@ -144,12 +159,16 @@ export default {
           console.log('Dados da carteira:', carteiraResponse.data) // Debug
           
           this.carteiraPosicoes = carteiraResponse.data.length
-          this.carteiraTotal = carteiraResponse.data.reduce((total, item) => {
+          const novoCarteiraTotal = carteiraResponse.data.reduce((total, item) => {
             // Usar o valor_investido que já vem calculado da API
             const valorInvestido = Number(item.valor_investido) || 0
             console.log(`Item ${item.ticker}: qtde=${item.qtde}, preco_compra=${item.preco_compra}, valor_investido=${valorInvestido}`) // Debug
             return total + valorInvestido
           }, 0)
+          
+          // Atualiza valores anteriores e novos
+          this.valoresAnteriores.carteiraTotal = valoresAnteriores.carteiraTotal
+          this.carteiraTotal = novoCarteiraTotal
           
           console.log('Total investido calculado:', this.carteiraTotal) // Debug
         } catch (carteiraError) {
@@ -172,7 +191,10 @@ export default {
           const saldoResponse = await axios.get('/api/conta-corrente', config)
           const lancamentos = saldoResponse.data.lancamentos || []
           if (lancamentos.length > 0) {
-            this.saldoDisponivel = lancamentos[lancamentos.length - 1].saldo
+            const novoSaldo = lancamentos[lancamentos.length - 1].saldo
+            // Atualiza valores anteriores e novos
+            this.valoresAnteriores.saldoDisponivel = valoresAnteriores.saldoDisponivel
+            this.saldoDisponivel = novoSaldo
           } else {
             this.saldoDisponivel = 0
           }
@@ -183,13 +205,13 @@ export default {
         }
 
         // Carregar ações (simulado por enquanto)
-        this.loadAcoes()
+        this.loadAcoes(valoresAnteriores)
       } catch (error) {
         console.error('Erro ao carregar dados:', error)
       }
     },
 
-    async loadAcoes() {
+    async loadAcoes(valoresAnteriores = null) {
       try {
         const token = localStorage.getItem('token')
         const config = {
@@ -203,21 +225,80 @@ export default {
         const acoes = response.data.acoes || response.data
 
         // Simular variação percentual
-        this.acoesEmAlta = acoes
+        const novasAcoesEmAlta = acoes
           .map(acao => ({
             ...acao,
             variacao_percentual: (Math.random() * 10).toFixed(2)
           }))
           .sort((a, b) => parseFloat(b.variacao_percentual) - parseFloat(a.variacao_percentual))
 
-        this.acoesEmBaixa = acoes
+        const novasAcoesEmBaixa = acoes
           .map(acao => ({
             ...acao,
             variacao_percentual: (-Math.random() * 10).toFixed(2)
           }))
           .sort((a, b) => parseFloat(a.variacao_percentual) - parseFloat(b.variacao_percentual))
+
+        // Salva valores anteriores para comparação
+        if (valoresAnteriores) {
+          this.valoresAnteriores.acoesEmAlta = valoresAnteriores.acoesEmAlta
+          this.valoresAnteriores.acoesEmBaixa = valoresAnteriores.acoesEmBaixa
+        } else {
+          this.valoresAnteriores.acoesEmAlta = this.acoesEmAlta.reduce((acc, acao) => {
+            acc[acao.ticker] = acao.preco_atual
+            return acc
+          }, {})
+          this.valoresAnteriores.acoesEmBaixa = this.acoesEmBaixa.reduce((acc, acao) => {
+            acc[acao.ticker] = acao.preco_atual
+            return acc
+          }, {})
+        }
+
+        this.acoesEmAlta = novasAcoesEmAlta
+        this.acoesEmBaixa = novasAcoesEmBaixa
       } catch (error) {
         console.error('Erro ao carregar ações:', error)
+      }
+    },
+
+    // Função para verificar se um valor mudou
+    valorMudou(campo, ticker = null) {
+      if (ticker) {
+        // Para ações
+        const acoes = campo === 'alta' ? this.acoesEmAlta : this.acoesEmBaixa
+        const acao = acoes.find(a => a.ticker === ticker)
+        const valorAnterior = this.valoresAnteriores[`acoesEm${campo === 'alta' ? 'Alta' : 'Baixa'}`][ticker]
+        return acao && valorAnterior && acao.preco_atual !== valorAnterior
+      } else {
+        // Para valores simples
+        const valorAnterior = this.valoresAnteriores[campo]
+        return this[campo] !== valorAnterior
+      }
+    },
+
+    // Função para verificar se um valor aumentou
+    valorAumentou(campo, ticker = null) {
+      if (ticker) {
+        // Para ações
+        const acoes = campo === 'alta' ? this.acoesEmAlta : this.acoesEmBaixa
+        const acao = acoes.find(a => a.ticker === ticker)
+        const valorAnterior = this.valoresAnteriores[`acoesEm${campo === 'alta' ? 'Alta' : 'Baixa'}`][ticker]
+        return acao && valorAnterior && acao.preco_atual > valorAnterior
+      } else {
+        // Para valores simples
+        const valorAnterior = this.valoresAnteriores[campo]
+        return this[campo] > valorAnterior
+      }
+    },
+
+    // Função para aplicar classe de animação
+    getAnimacaoClass(campo, ticker = null) {
+      if (!this.valorMudou(campo, ticker)) return ''
+      
+      if (this.valorAumentou(campo, ticker)) {
+        return 'valor-alterado-positivo'
+      } else {
+        return 'valor-alterado-negativo'
       }
     },
 
@@ -438,6 +519,51 @@ export default {
 
 .stock-change.negative {
   color: #dc3545;
+}
+
+/* Animação para valores alterados */
+@keyframes piscar-positivo {
+  0% { background-color: transparent; }
+  50% { background-color: #d4edda; border-color: #28a745; }
+  100% { background-color: transparent; }
+}
+
+@keyframes piscar-negativo {
+  0% { background-color: transparent; }
+  50% { background-color: #f8d7da; border-color: #dc3545; }
+  100% { background-color: transparent; }
+}
+
+.valor-alterado-positivo {
+  animation: piscar-positivo 1s ease-in-out;
+  border-radius: 4px;
+  padding: 2px 4px;
+  border: 1px solid transparent;
+}
+
+.valor-alterado-negativo {
+  animation: piscar-negativo 1s ease-in-out;
+  border-radius: 4px;
+  padding: 2px 4px;
+  border: 1px solid transparent;
+}
+
+/* Ajustes para os valores que podem piscar */
+.stat-value.valor-alterado-positivo,
+.stat-value.valor-alterado-negativo {
+  animation: piscar-positivo 1s ease-in-out;
+}
+
+.stat-value.valor-alterado-negativo {
+  animation: piscar-negativo 1s ease-in-out;
+}
+
+.stock-price.valor-alterado-positivo {
+  animation: piscar-positivo 1s ease-in-out;
+}
+
+.stock-price.valor-alterado-negativo {
+  animation: piscar-negativo 1s ease-in-out;
 }
 
 @media (max-width: 768px) {

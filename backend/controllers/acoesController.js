@@ -1,5 +1,59 @@
 const db = require('../config/database');
-const {getPrecosAcoes, getAcoesComVariação} = require("../services/acoesService");
+const {getPrecosAcoes, getAcoesComVariação, getTickersDisponiveis} = require("../services/acoesService");
+
+// Função para inicializar lista de interesse com 10 ações aleatórias
+const inicializarListaInteresse = async (userId) => {
+  try {
+    // Busca todos os tickers disponíveis
+    const tickersDisponiveis = await getTickersDisponiveis();
+    
+    // Seleciona 10 tickers aleatórios
+    const tickersAleatorios = [];
+    const tickersCopy = [...tickersDisponiveis];
+    
+    for (let i = 0; i < 10 && tickersCopy.length > 0; i++) {
+      const randomIndex = Math.floor(Math.random() * tickersCopy.length);
+      tickersAleatorios.push(tickersCopy[randomIndex]);
+      tickersCopy.splice(randomIndex, 1);
+    }
+    
+    // Insere os tickers na lista de interesse do usuário
+    for (let i = 0; i < tickersAleatorios.length; i++) {
+      await db.query(
+        'INSERT INTO acao_interesse (id_usuario, ticker, ordem) VALUES (?, ?, ?)',
+        [userId, tickersAleatorios[i], i + 1]
+      );
+    }
+    
+    console.log(`Lista de interesse inicializada para usuário ${userId} com ${tickersAleatorios.length} ações`);
+    return tickersAleatorios;
+  } catch (error) {
+    console.error('Erro ao inicializar lista de interesse:', error);
+    throw error;
+  }
+};
+
+// Função para verificar e inicializar lista de interesse se necessário
+const verificarEInicializarLista = async (userId) => {
+  try {
+    // Verifica se o usuário já tem ações na lista de interesse
+    const [acoesExistentes] = await db.query(
+      'SELECT COUNT(*) as total FROM acao_interesse WHERE id_usuario = ?',
+      [userId]
+    );
+    
+    if (acoesExistentes[0].total === 0) {
+      console.log(`Usuário ${userId} não tem ações na lista de interesse. Inicializando...`);
+      await inicializarListaInteresse(userId);
+      return true; // Indica que foi inicializado
+    }
+    
+    return false; // Indica que já tinha ações
+  } catch (error) {
+    console.error('Erro ao verificar lista de interesse:', error);
+    throw error;
+  }
+};
 
 const interesse = async (req, res) => {
   try {
@@ -7,6 +61,8 @@ const interesse = async (req, res) => {
     if (!ticker) {
       return res.status(400).json({ message: 'Ticker é obrigatório' });
     }
+
+    console.log('Adicionando ação de interesse:', { userId: req.userId, ticker });
 
     // Verifica se já existe
     const [existe] = await db.query(
@@ -24,10 +80,13 @@ const interesse = async (req, res) => {
     );
     const ordem = (maxOrdem[0].maxOrdem || 0) + 1;
 
-    await db.query(
-      'INSERT INTO acao_interesse (id_usuario, ticker, ordem) VALUES (?, ?, ?)',
-      [req.userId, ticker, ordem]
-    );
+    console.log('Inserindo ação:', { userId: req.userId, ticker, ordem });
+
+    const query = 'INSERT INTO acao_interesse (id_usuario, ticker, ordem) VALUES (?, ?, ?)';
+    const params = [req.userId, ticker, ordem];
+    console.log('Query:', query, 'Params:', params);
+    
+    await db.query(query, params);
 
     res.status(201).json({ message: 'Ação adicionada à lista de interesse' });
   } catch (error) {
@@ -106,6 +165,9 @@ const ordemTickerDesce = async (req, res) => {
 
 const ordensUsuario = async (req, res) => {
   try {
+    // Verifica e inicializa lista de interesse se necessário
+    await verificarEInicializarLista(req.userId);
+    
     // Busca as ações de interesse do usuário
     const [acoesInteresse] = await db.query(`
       SELECT ticker, ordem
@@ -115,9 +177,10 @@ const ordensUsuario = async (req, res) => {
     `, [req.userId]);
 
     // Busca o minuto simulado da query string
-    const minuto = req.query.minuto ? parseInt(req.query.minuto, 10) : null;
+    let minuto = req.query.minuto ? parseInt(req.query.minuto, 10) : null;
     if (minuto === null || isNaN(minuto) || minuto < 0 || minuto > 59) {
-      return res.status(400).json({ message: 'Parâmetro minuto (0-59) é obrigatório na query string.' });
+      // Se não for informado, usa o minuto atual
+      minuto = new Date().getMinutes();
     }
 
     // Busca os preços e variações corretos para os tickers de interesse
@@ -130,7 +193,7 @@ const ordensUsuario = async (req, res) => {
       ...precos.find(p => p.ticker === acao.ticker)
     }));
 
-    res.json({ acoes });
+    res.json(acoes);
   } catch (error) {
     console.error('Erro ao listar ações de interesse:', error);
     res.status(500).json({ message: 'Erro interno do servidor' });
@@ -140,12 +203,16 @@ const ordensUsuario = async (req, res) => {
 // GET /api/acoes?minuto=XX
 const listarAcoes = async (req, res) => {
   try {
-    const minuto = req.query.minuto ? parseInt(req.query.minuto, 10) : null;
+    let minuto = req.query.minuto ? parseInt(req.query.minuto, 10) : null;
     if (minuto === null || isNaN(minuto) || minuto < 0 || minuto > 59) {
-      return res.status(400).json({ message: 'Parâmetro minuto (0-59) é obrigatório na query string.' });
+      // Se não for informado, usa o minuto atual
+      minuto = new Date().getMinutes();
     }
-    const acoes = await getAcoesComVariação({ tickers: [], minuto });
-    res.json({ acoes });
+    // Busca todos os tickers disponíveis
+    const tickers = await getTickersDisponiveis();
+    // Busca os preços e variações para todos os tickers
+    const acoes = await getAcoesComVariação({ tickers, minuto });
+    res.json(acoes);
   } catch (error) {
     console.error('Erro ao buscar ações do mercado:', error);
     res.status(500).json({ message: 'Erro ao buscar ações do mercado', error: error.message });

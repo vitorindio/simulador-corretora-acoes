@@ -9,6 +9,7 @@
         <router-link to="/carteira" class="nav-link">Carteira</router-link>
         <router-link to="/ordens" class="nav-link">Ordens</router-link>
         <router-link to="/acoes" class="nav-link active">Ações</router-link>
+        <router-link to="/minha-lista" class="nav-link">Minha Lista</router-link>
         <button @click="logout" class="logout-btn">Sair</button>
       </div>
     </nav>
@@ -53,10 +54,28 @@
             <div class="acao-header">
               <h3>{{ acao.ticker }}</h3>
               <span class="acao-nome">{{ acao.nome || 'Ação' }}</span>
+              <div class="acao-controls">
+                <button 
+                  v-if="!acoesInteresse.includes(acao.ticker)" 
+                  class="btn-adicionar" 
+                  @click="adicionarInteresse(acao.ticker)" 
+                  title="Adicionar à Lista de Interesse"
+                >
+                  +
+                </button>
+                <button 
+                  v-else 
+                  class="btn-remover" 
+                  @click="removerInteresse(acao.ticker)" 
+                  title="Remover da Lista de Interesse"
+                >
+                  ×
+                </button>
+              </div>
             </div>
             <div class="acao-preco">
               <span class="preco-atual-label">Preço Atual:</span>
-              <span class="preco-atual">{{ formatCurrency(acao.preco_atual) }}</span>
+              <span class="preco-atual" :class="getAnimacaoClass(acao.ticker, 'preco_atual')">{{ formatCurrency(acao.preco_atual) }}</span>
             </div>
             <div class="acao-fechamento">
               <span class="fechamento-label">Fechamento Anterior:</span>
@@ -64,11 +83,11 @@
             </div>
             <div class="acao-variacao">
               <span class="variacao-label">Variação R$:</span>
-              <span class="variacao-valor" :class="getVariacaoClass(acao.variacao_nominal)">
+              <span class="variacao-valor" :class="getVariacaoClass(acao.variacao_nominal) + ' ' + getAnimacaoClass(acao.ticker, 'variacao_nominal')">
                 {{ formatCurrency(acao.variacao_nominal) }}
               </span>
               <span class="variacao-label">Variação %:</span>
-              <span class="variacao-percentual" :class="getVariacaoClass(acao.variacao_percentual)">
+              <span class="variacao-percentual" :class="getVariacaoClass(acao.variacao_percentual) + ' ' + getAnimacaoClass(acao.ticker, 'variacao_percentual')">
                 {{ formatPercentual(acao.variacao_percentual) }}
               </span>
             </div>
@@ -156,13 +175,37 @@
     <div v-if="showAdicionarAcao" class="modal-overlay" @click="showAdicionarAcao = false">
       <div class="modal" @click.stop>
         <h3>Adicionar Ação de Interesse</h3>
-        <select v-model="novaAcaoInteresse">
-          <option value="">Selecione uma ação</option>
-          <option v-for="ticker in tickersDisponiveis.filter(t => !acoesInteresse.includes(t))" :key="ticker" :value="ticker">{{ ticker }}</option>
-        </select>
+        <p class="modal-subtitle">Selecione uma ação que não esteja na sua lista de interesse:</p>
+        
+        <div class="acoes-disponiveis">
+          <div 
+            v-for="acao in acoesDisponiveisParaAdicionar" 
+            :key="acao.ticker" 
+            class="acao-opcao"
+            @click="selecionarAcaoParaAdicionar(acao.ticker)"
+            :class="{ 'selecionada': novaAcaoInteresse === acao.ticker }"
+          >
+            <div class="acao-opcao-info">
+              <span class="acao-ticker">{{ acao.ticker }}</span>
+              <span class="acao-preco">{{ formatCurrency(acao.preco_atual) }}</span>
+            </div>
+            <div class="acao-opcao-variacao">
+              <span :class="getVariacaoClass(acao.variacao_percentual)">
+                {{ formatPercentual(acao.variacao_percentual) }}
+              </span>
+            </div>
+          </div>
+        </div>
+        
+        <div v-if="acoesDisponiveisParaAdicionar.length === 0" class="empty-state">
+          <p>Todas as ações já estão na sua lista de interesse!</p>
+        </div>
+        
         <div class="form-actions">
           <button @click="showAdicionarAcao = false" class="btn-cancel">Cancelar</button>
-          <button @click="adicionarInteresse" class="btn-primary">Adicionar</button>
+          <button @click="adicionarInteresse" :disabled="!novaAcaoInteresse" class="btn-primary">
+            Adicionar à Lista
+          </button>
         </div>
       </div>
     </div>
@@ -180,6 +223,7 @@ export default {
     return {
       acoesMercado: [], // todas as ações do mercado
       acoesInteresse: [], // tickers de interesse do usuário
+      acoesAnteriores: {}, // para rastrear valores anteriores
       loading: true,
       filtroBusca: '',
       filtroOrdenacao: 'ticker',
@@ -201,8 +245,8 @@ export default {
   },
   computed: {
     acoesFiltradas() {
-      // Mostra apenas as ações de interesse do usuário
-      let acoes = this.acoesMercado.filter(acao => this.acoesInteresse.includes(acao.ticker))
+      // Mostra TODAS as ações do mercado (não apenas as de interesse)
+      let acoes = this.acoesMercado
       // Filtro de busca
       if (this.filtroBusca) {
         acoes = acoes.filter(acao => 
@@ -224,6 +268,10 @@ export default {
       // Para o modal de compra, mostrar todas as ações do mercado
       return this.acoesMercado
     },
+    acoesDisponiveisParaAdicionar() {
+      // Retorna apenas ações que não estão na lista de interesse
+      return this.acoesMercado.filter(acao => !this.acoesInteresse.includes(acao.ticker))
+    },
     horaSimulada() {
       // Exibe o horário simulado no formato 14:MM
       const baseHour = 14;
@@ -238,30 +286,60 @@ export default {
   },
   methods: {
     async loadAcoesMercado() {
-      this.loading = true
-      const token = localStorage.getItem('token')
-      const config = { headers: { Authorization: `Bearer ${token}` } }
-      const response = await axios.get(`http://localhost:3000/api/acoes?minuto=${this.minutoSimulado}`, config)
-      this.acoesMercado = response.data.acoes
-      this.loading = false
+      try {
+        this.loading = true
+        const token = localStorage.getItem('token')
+        const config = { headers: { Authorization: `Bearer ${token}` } }
+        
+        // Salva valores anteriores para animação ANTES de carregar novos dados
+        this.salvarValoresAnteriores()
+        
+        // Carrega todas as ações do mercado com o minuto simulado
+        const minuto = Number(localStorage.getItem('minutoSimulado')) || new Date().getMinutes()
+        const response = await axios.get(`/api/acoes?minuto=${minuto}`, config)
+        this.acoesMercado = response.data
+      } catch (error) {
+        console.error('Erro ao carregar ações:', error)
+      } finally {
+        this.loading = false
+      }
     },
+    
     async loadAcoesInteresse() {
-      const token = localStorage.getItem('token')
-      const config = { headers: { Authorization: `Bearer ${token}` } }
-      const response = await axios.get(`http://localhost:3000/api/acoes?minuto=${this.minutoSimulado}`, config)
-      this.acoesInteresse = response.data.acoes.map(a => a.ticker)
+      try {
+        const token = localStorage.getItem('token')
+        const config = { headers: { Authorization: `Bearer ${token}` } }
+        const response = await axios.get('/api/acoes/interesse', config)
+        this.acoesInteresse = response.data.map(item => item.ticker)
+      } catch (error) {
+        console.error('Erro ao carregar ações de interesse:', error)
+      }
     },
     async loadTickersDisponiveis() {
       const token = localStorage.getItem('token')
       const config = { headers: { Authorization: `Bearer ${token}` } }
-      const response = await axios.get('http://localhost:3000/api/acoes/tickers', config)
+      const response = await axios.get('/api/acoes/tickers', config)
       this.tickersDisponiveis = response.data.tickers
     },
-    async adicionarInteresse() {
-      if (!this.novaAcaoInteresse) return
+    selecionarAcaoParaAdicionar(ticker) {
+      this.novaAcaoInteresse = ticker
+    },
+    
+    async adicionarInteresse(ticker) {
+      if (!ticker) return
+      
+      // Garantir que ticker seja uma string
+      const tickerString = typeof ticker === 'string' ? ticker : ticker.ticker || ticker.toString()
+      
       const token = localStorage.getItem('token')
       const config = { headers: { Authorization: `Bearer ${token}` } }
-      await axios.post('http://localhost:3000/api/acoes/interesse', { ticker: this.novaAcaoInteresse }, config)
+      
+      // Garantir que apenas o ticker seja enviado
+      const data = { ticker: tickerString }
+      console.log('Enviando dados:', data)
+      
+      await axios.post('/api/acoes/interesse', data, config)
+      this.acoesInteresse.push(tickerString)
       this.showAdicionarAcao = false
       this.novaAcaoInteresse = ''
       await this.loadAcoesInteresse()
@@ -269,7 +347,20 @@ export default {
     async removerInteresse(ticker) {
       const token = localStorage.getItem('token')
       const config = { headers: { Authorization: `Bearer ${token}` } }
-      await axios.delete(`http://localhost:3000/api/acoes/interesse/${ticker}`, config)
+      await axios.delete(`/api/acoes/interesse/${ticker}`, config)
+      this.acoesInteresse = this.acoesInteresse.filter(t => t !== ticker)
+      await this.loadAcoesInteresse()
+    },
+    async subirAcao(ticker) {
+      const token = localStorage.getItem('token')
+      const config = { headers: { Authorization: `Bearer ${token}` } }
+      await axios.post(`/api/acoes/interesse/subir/${ticker}`, {}, config)
+      await this.loadAcoesInteresse()
+    },
+    async descerAcao(ticker) {
+      const token = localStorage.getItem('token')
+      const config = { headers: { Authorization: `Bearer ${token}` } }
+      await axios.post(`/api/acoes/interesse/descer/${ticker}`, {}, config)
       await this.loadAcoesInteresse()
     },
     getNomeAcao(ticker) {
@@ -336,8 +427,8 @@ export default {
     },
     async refreshAcoes() {
       this.loading = true
-      await this.loadAcoesMercado()
       await this.loadAcoesInteresse()
+      this.loading = false
     },
     formatCurrency(value) {
       return new Intl.NumberFormat('pt-BR', {
@@ -374,10 +465,55 @@ export default {
       localStorage.setItem('minutoSimulado', this.minutoSimulado)
       this.refreshAcoes()
     },
-    onMinutoChange(minuto) {
-      this.minutoSimulado = minuto
+    onMinutoChange() {
+      // Recarrega as ações quando o minuto muda
       this.loadAcoesMercado()
+      // Também recarrega as ações de interesse
       this.loadAcoesInteresse()
+    },
+    // Função para verificar se um valor mudou
+    valorMudou(ticker, campo) {
+      const acao = this.acoesMercado.find(a => a.ticker === ticker)
+      if (!acao || !this.acoesAnteriores[ticker]) return false
+      
+      const valorAnterior = this.acoesAnteriores[ticker][campo]
+      const valorAtual = acao[campo]
+      
+      return valorAnterior !== valorAtual
+    },
+
+    // Função para verificar se um valor aumentou
+    valorAumentou(ticker, campo) {
+      const acao = this.acoesMercado.find(a => a.ticker === ticker)
+      if (!acao || !this.acoesAnteriores[ticker]) return false
+      
+      const valorAnterior = this.acoesAnteriores[ticker][campo]
+      const valorAtual = acao[campo]
+      
+      return valorAtual > valorAnterior
+    },
+
+    // Função para aplicar classe de animação
+    getAnimacaoClass(ticker, campo) {
+      if (!this.valorMudou(ticker, campo)) return ''
+      
+      if (this.valorAumentou(ticker, campo)) {
+        return 'valor-alterado-positivo'
+      } else {
+        return 'valor-alterado-negativo'
+      }
+    },
+    salvarValoresAnteriores() {
+      // Só salva se já existem ações carregadas
+      if (this.acoesMercado && this.acoesMercado.length > 0) {
+        this.acoesMercado.forEach(acao => {
+          this.acoesAnteriores[acao.ticker] = {
+            preco_atual: acao.preco_atual,
+            variacao_nominal: acao.variacao_nominal,
+            variacao_percentual: acao.variacao_percentual
+          }
+        })
+      }
     }
   }
 }
@@ -529,6 +665,21 @@ export default {
   border-color: #667eea;
 }
 
+.btn-adicionar-lista {
+  background: #28a745;
+  color: white;
+  border: none;
+  padding: 0.75rem 1.5rem;
+  border-radius: 5px;
+  cursor: pointer;
+  font-weight: 500;
+  transition: opacity 0.3s;
+}
+
+.btn-adicionar-lista:hover {
+  opacity: 0.8;
+}
+
 .acoes-content {
   background: white;
   border-radius: 10px;
@@ -562,6 +713,9 @@ export default {
 
 .acao-header {
   margin-bottom: 1rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
 }
 
 .acao-header h3 {
@@ -573,6 +727,60 @@ export default {
 .acao-nome {
   color: #666;
   font-size: 0.9rem;
+}
+
+.acao-controls {
+  display: flex;
+  gap: 0.25rem;
+}
+
+.btn-subir,
+.btn-descer {
+  background: #e0e0e0;
+  color: #333;
+  border: none;
+  padding: 0.25rem 0.5rem;
+  border-radius: 3px;
+  cursor: pointer;
+  font-size: 0.8rem;
+  font-weight: bold;
+  transition: background-color 0.3s;
+}
+
+.btn-subir:hover,
+.btn-descer:hover {
+  background-color: #d0d0d0;
+}
+
+.btn-remover {
+  background: #dc3545;
+  color: white;
+  border: none;
+  padding: 0.25rem 0.5rem;
+  border-radius: 3px;
+  cursor: pointer;
+  font-size: 0.8rem;
+  font-weight: bold;
+}
+
+.btn-remover:hover {
+  opacity: 0.8;
+}
+
+.btn-adicionar {
+  background: #4CAF50; /* Verde */
+  color: white;
+  border: none;
+  padding: 0.25rem 0.5rem;
+  border-radius: 3px;
+  cursor: pointer;
+  font-size: 0.8rem;
+  font-weight: bold;
+  transition: background-color 0.3s;
+}
+
+.btn-adicionar:hover {
+  background-color: #388E3C; /* Verde mais escuro */
 }
 
 .acao-preco {
@@ -658,33 +866,12 @@ export default {
   color: #666;
 }
 
-.acao-info {
-  margin-bottom: 1rem;
-}
-
-.info-item {
-  display: flex;
-  justify-content: space-between;
-  margin-bottom: 0.5rem;
-}
-
-.info-item .label {
-  color: #666;
-  font-size: 0.9rem;
-}
-
-.info-item .value {
-  font-weight: 500;
-  color: #333;
-}
-
 .acao-actions {
   display: flex;
   gap: 0.5rem;
 }
 
-.btn-compra,
-.btn-venda {
+.btn-compra {
   flex: 1;
   padding: 0.75rem;
   border: none;
@@ -692,20 +879,11 @@ export default {
   cursor: pointer;
   font-weight: 500;
   transition: opacity 0.3s;
-}
-
-.btn-compra {
   background: #28a745;
   color: white;
 }
 
-.btn-venda {
-  background: #dc3545;
-  color: white;
-}
-
-.btn-compra:hover,
-.btn-venda:hover {
+.btn-compra:hover {
   opacity: 0.8;
 }
 
@@ -793,6 +971,108 @@ export default {
   border-radius: 5px;
   margin-top: 1rem;
   text-align: center;
+}
+
+/* Modal Adicionar Ação */
+.modal-subtitle {
+  color: #666;
+  margin-bottom: 1rem;
+  text-align: center;
+}
+
+.acoes-disponiveis {
+  max-height: 300px;
+  overflow-y: auto;
+  margin-bottom: 1rem;
+}
+
+.acao-opcao {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.75rem;
+  border: 1px solid #ddd;
+  border-radius: 5px;
+  margin-bottom: 0.5rem;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+
+.acao-opcao:hover {
+  background-color: #f8f9fa;
+  border-color: #667eea;
+}
+
+.acao-opcao.selecionada {
+  background-color: #667eea;
+  color: white;
+  border-color: #667eea;
+}
+
+.acao-opcao-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.acao-ticker {
+  font-weight: bold;
+  font-size: 1.1rem;
+}
+
+.acao-preco {
+  font-size: 0.9rem;
+  opacity: 0.8;
+}
+
+.acao-opcao-variacao {
+  font-weight: bold;
+}
+
+/* Animação para valores alterados */
+@keyframes piscar-positivo {
+  0% { background-color: transparent; }
+  50% { background-color: #d4edda; border-color: #28a745; }
+  100% { background-color: transparent; }
+}
+
+@keyframes piscar-negativo {
+  0% { background-color: transparent; }
+  50% { background-color: #f8d7da; border-color: #dc3545; }
+  100% { background-color: transparent; }
+}
+
+.valor-alterado-positivo {
+  animation: piscar-positivo 1s ease-in-out;
+  border-radius: 4px;
+  padding: 2px 4px;
+  border: 1px solid transparent;
+}
+
+.valor-alterado-negativo {
+  animation: piscar-negativo 1s ease-in-out;
+  border-radius: 4px;
+  padding: 2px 4px;
+  border: 1px solid transparent;
+}
+
+/* Ajustes para os valores que podem piscar */
+.preco-atual.valor-alterado-positivo {
+  animation: piscar-positivo 1s ease-in-out;
+}
+
+.preco-atual.valor-alterado-negativo {
+  animation: piscar-negativo 1s ease-in-out;
+}
+
+.variacao-valor.valor-alterado-positivo,
+.variacao-percentual.valor-alterado-positivo {
+  animation: piscar-positivo 1s ease-in-out;
+}
+
+.variacao-valor.valor-alterado-negativo,
+.variacao-percentual.valor-alterado-negativo {
+  animation: piscar-negativo 1s ease-in-out;
 }
 
 @media (max-width: 768px) {

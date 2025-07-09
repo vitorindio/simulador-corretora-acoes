@@ -4,6 +4,7 @@ import DashboardView from '../views/Dashboard.vue'
 import CarteiraView from '../views/Carteira.vue'
 import OrdensView from '../views/Ordens.vue'
 import AcoesView from '../views/Acoes.vue'
+import MinhaListView from '../views/MinhaLista.vue'
 
 const routes = [
   {
@@ -37,6 +38,12 @@ const routes = [
     path: '/acoes',
     name: 'Acoes',
     component: AcoesView,
+    meta: { requiresAuth: true }
+  },
+  {
+    path: '/minha-lista',
+    name: 'MinhaLista',
+    component: MinhaListView,
     meta: { requiresAuth: true }
   },
   {

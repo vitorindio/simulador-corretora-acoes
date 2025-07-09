@@ -1,6 +1,7 @@
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const db = require('../config/database');
+const { getTickersDisponiveis } = require('../services/acoesService');
 
 // Funções auxiliares
 const gerarToken = (usuario) => {
@@ -9,6 +10,38 @@ const gerarToken = (usuario) => {
     process.env.JWT_SECRET,
     { expiresIn: '24h' }
   );
+};
+
+// Função para inicializar lista de interesse com 10 ações aleatórias
+const inicializarListaInteresse = async (userId) => {
+  try {
+    // Busca todos os tickers disponíveis
+    const tickersDisponiveis = await getTickersDisponiveis();
+    
+    // Seleciona 10 tickers aleatórios
+    const tickersAleatorios = [];
+    const tickersCopy = [...tickersDisponiveis];
+    
+    for (let i = 0; i < 10 && tickersCopy.length > 0; i++) {
+      const randomIndex = Math.floor(Math.random() * tickersCopy.length);
+      tickersAleatorios.push(tickersCopy[randomIndex]);
+      tickersCopy.splice(randomIndex, 1);
+    }
+    
+    // Insere os tickers na lista de interesse do usuário
+    for (let i = 0; i < tickersAleatorios.length; i++) {
+      await db.query(
+        'INSERT INTO acao_interesse (id_usuario, ticker, ordem) VALUES (?, ?, ?)',
+        [userId, tickersAleatorios[i], i + 1]
+      );
+    }
+    
+    console.log(`Lista de interesse inicializada para usuário ${userId} com ${tickersAleatorios.length} ações`);
+    return tickersAleatorios;
+  } catch (error) {
+    console.error('Erro ao inicializar lista de interesse:', error);
+    throw error;
+  }
 };
 
 // POST /api/auth/login
@@ -84,9 +117,19 @@ const criarConta = async (req, res) => {
       [email, senhaHash]
     );
 
+    const userId = result.insertId;
+
+    // Inicializa lista de interesse com 10 ações aleatórias
+    try {
+      await inicializarListaInteresse(userId);
+    } catch (error) {
+      console.error('Erro ao inicializar lista de interesse, mas usuário foi criado:', error);
+      // Não falha a criação do usuário se a inicialização falhar
+    }
+
     // Retorna apenas os dados do usuário (sem senha)
     res.status(201).json({ 
-      id: result.insertId,
+      id: userId,
       email: email,
       message: 'Usuário cadastrado com sucesso. Faça login para obter o token de acesso.'
     });

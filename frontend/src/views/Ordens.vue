@@ -9,6 +9,7 @@
         <router-link to="/carteira" class="nav-link">Carteira</router-link>
         <router-link to="/ordens" class="nav-link active">Ordens</router-link>
         <router-link to="/acoes" class="nav-link">Ações</router-link>
+        <router-link to="/minha-lista" class="nav-link">Minha Lista</router-link>
         <button @click="logout" class="logout-btn">Sair</button>
       </div>
     </nav>
