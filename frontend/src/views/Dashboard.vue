@@ -54,7 +54,6 @@
                 </div>
                 <div class="order-details">
                   <span>{{ ordem.quantidade }} ações</span>
-                  <span> {{ formatCurrency(ordem.preco_execucao || 0) }}</span>
                 </div>
               </div>
             </div>
@@ -142,14 +141,14 @@ export default {
           console.log('Dados da carteira:', carteiraResponse.data) // Debug
           
           this.carteiraPosicoes = carteiraResponse.data.length
+          this.carteiraTotal = carteiraResponse.data.reduce((total, item) => {
+            // Usar o valor_investido que já vem calculado da API
+            const valorInvestido = Number(item.valor_investido) || 0
+            console.log(`Item ${item.ticker}: qtde=${item.qtde}, preco_compra=${item.preco_compra}, valor_investido=${valorInvestido}`) // Debug
+            return total + valorInvestido
+          }, 0)
           
-          // Carregar total investido baseado nas ordens executadas
-          const totalInvestidoResponse = await axios.get('/api/carteira/total-investido', config)
-          console.log('Total investido da API:', totalInvestidoResponse.data) // Debug
-          
-          this.carteiraTotal = totalInvestidoResponse.data.total_liquido || 0
-          
-          console.log('Total investido final:', this.carteiraTotal) // Debug
+          console.log('Total investido calculado:', this.carteiraTotal) // Debug
         } catch (carteiraError) {
           console.error('Erro ao carregar carteira:', carteiraError)
           this.carteiraPosicoes = 0

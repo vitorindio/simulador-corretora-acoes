@@ -124,8 +124,8 @@ const executarOrdemCompra = async (req, res) => {
         );
 
         await db.query(
-          'UPDATE carteira SET qtde = qtde + ?, preco_compra = ? WHERE id_usuario = ?',
-          [ordem.quantidade, novo_preco_medio, carteira.id]
+          'UPDATE carteira SET qtde = qtde + ?, preco_compra = ? WHERE id_usuario = ? AND ticker = ?',
+          [ordem.quantidade, novo_preco_medio, id_usuario, ordem.ticker]
         );
       }
 
