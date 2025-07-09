@@ -14,6 +14,7 @@
     </nav>
 
     <main class="main-content">
+      <SimuladorRelogio @minuto-change="onMinutoChange" />
       <div class="dashboard-header">
         <h2>Bem-vindo ao seu Dashboard</h2>
         <p>Gerencie sua carteira de investimentos</p>
@@ -108,9 +109,11 @@
 
 <script>
 import axios from 'axios'
+import SimuladorRelogio from '../components/SimuladorRelogio.vue'
 
 export default {
   name: 'DashboardView',
+  components: { SimuladorRelogio },
   data() {
     return {
       carteiraTotal: 0,
@@ -228,6 +231,10 @@ export default {
     logout() {
       localStorage.removeItem('token')
       this.$router.push('/login')
+    },
+
+    onMinutoChange() {
+      this.loadDashboardData()
     }
   }
 }

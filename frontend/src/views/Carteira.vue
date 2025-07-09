@@ -14,6 +14,8 @@
     </nav>
 
     <main class="main-content">
+      <SimuladorRelogio @minuto-change="onMinutoChange" />
+      <!-- Remover qualquer bloco antigo de horário simulado e botões -->
       <div class="carteira-header">
         <h2>Minha Carteira</h2>
         <div>
@@ -155,9 +157,11 @@
 
 <script>
 import axios from 'axios'
+import SimuladorRelogio from '../components/SimuladorRelogio.vue'
 
 export default {
   name: 'CarteiraView',
+  components: { SimuladorRelogio },
   data() {
     return {
       carteira: [],
@@ -321,11 +325,10 @@ export default {
       this.$router.push('/conta-corrente')
     },
 
-    avancarMinuto(delta = 1) {
-      this.minutoSimulado = (this.minutoSimulado + delta) % 60
-      if (this.minutoSimulado < 0) this.minutoSimulado += 60
-      localStorage.setItem('minutoSimulado', this.minutoSimulado)
+    onMinutoChange(minuto) {
+      this.minutoSimulado = minuto
       this.loadCarteira()
+      this.loadAcoesDisponiveis()
     }
   }
 }

@@ -14,6 +14,8 @@
     </nav>
 
     <main class="main-content">
+      <SimuladorRelogio @minuto-change="onMinutoChange" />
+      <!-- Remover qualquer bloco antigo de horário simulado e botões -->
       <div class="ordens-header">
         <h2>Minhas Ordens</h2>
         <div class="header-actions">
@@ -193,9 +195,11 @@
 
 <script>
 import axios from 'axios'
+import SimuladorRelogio from '../components/SimuladorRelogio.vue'
 
 export default {
   name: 'OrdensView',
+  components: { SimuladorRelogio },
   data() {
     return {
       ordens: [],
@@ -211,7 +215,8 @@ export default {
         preco_referencia: null
       },
       criandoOrdem: false,
-      ordemError: ''
+      ordemError: '',
+      minutoSimulado: 0 // Adicionado para controlar o minuto simulado
     }
   },
   computed: {
@@ -366,6 +371,12 @@ export default {
     logout() {
       localStorage.removeItem('token')
       this.$router.push('/login')
+    },
+
+    onMinutoChange(minuto) {
+      this.minutoSimulado = minuto
+      this.loadOrdens()
+      this.loadAcoesDisponiveis()
     }
   }
 }

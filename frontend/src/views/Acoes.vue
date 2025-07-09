@@ -14,16 +14,12 @@
     </nav>
 
     <main class="main-content">
+      <SimuladorRelogio @minuto-change="onMinutoChange" />
+      <!-- Remover o antigo bloco de horário simulado e botões -->
       <div class="acoes-header">
-        
         <h2>Mercado de Ações</h2>
         <div class="header-actions">
-          <span class="relogio-simulado">Horário simulado: {{ horaSimulada }}</span>
-          <button @click="avancarMinuto(-5)" class="btn-secondary">-5 min</button>
-          <button @click="avancarMinuto(-1)" class="btn-secondary">-1 min</button>
-          <button @click="avancarMinuto(1)" class="btn-secondary">+1 min</button>
-          <button @click="avancarMinuto(5)" class="btn-secondary">+5 min</button>
-          <button @click="showNovaOrdem = true" class="btn-primary">Nova Ordem</button>
+          <!-- REMOVER: <span class="relogio-simulado">Horário simulado: {{ horaSimulada }}</span> ... botões ... -->
         </div>
       </div>
 
@@ -78,7 +74,6 @@
             </div>
             <div class="acao-actions">
               <button @click="comprarAcao(acao)" class="btn-compra">Comprar</button>
-              <button @click="venderAcao(acao)" class="btn-venda">Vender</button>
             </div>
           </div>
         </div>
@@ -176,9 +171,11 @@
 
 <script>
 import axios from 'axios'
+import SimuladorRelogio from '../components/SimuladorRelogio.vue'
 
 export default {
   name: 'AcoesView',
+  components: { SimuladorRelogio },
   data() {
     return {
       acoesMercado: [], // todas as ações do mercado
@@ -376,6 +373,11 @@ export default {
       if (this.minutoSimulado < 0) this.minutoSimulado += 60
       localStorage.setItem('minutoSimulado', this.minutoSimulado)
       this.refreshAcoes()
+    },
+    onMinutoChange(minuto) {
+      this.minutoSimulado = minuto
+      this.loadAcoesMercado()
+      this.loadAcoesInteresse()
     }
   }
 }
