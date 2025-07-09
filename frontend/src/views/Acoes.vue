@@ -15,9 +15,12 @@
 
     <main class="main-content">
       <div class="acoes-header">
+        
         <h2>Mercado de Ações</h2>
         <div class="header-actions">
           <button @click="refreshAcoes" class="btn-secondary">Atualizar Preços</button>
+          <button @click="avancarMinuto(1)" class="btn-secondary">+1 min</button>
+          <button @click="avancarMinuto(5)" class="btn-secondary">+5 min</button>
           <button @click="showNovaOrdem = true" class="btn-primary">Nova Ordem</button>
         </div>
       </div>
