@@ -248,7 +248,8 @@ export default {
       this.loading = true
       const token = localStorage.getItem('token')
       const config = { headers: { Authorization: `Bearer ${token}` } }
-      const response = await axios.get(`/api/acoes?minuto=${this.minutoSimulado}`, config)
+      console.log(token);
+      const response = await axios.get(`http://localhost:3000/api/acoes?minuto=${this.minutoSimulado}`, config)
       this.acoesMercado = response.data.acoes
       this.loading = false
     },
@@ -262,14 +263,14 @@ export default {
     async loadTickersDisponiveis() {
       const token = localStorage.getItem('token')
       const config = { headers: { Authorization: `Bearer ${token}` } }
-      const response = await axios.get('/api/acoes/tickers', config)
+      const response = await axios.get('http://localhost:3000/api/acoes/tickers', config)
       this.tickersDisponiveis = response.data.tickers
     },
     async adicionarInteresse() {
       if (!this.novaAcaoInteresse) return
       const token = localStorage.getItem('token')
       const config = { headers: { Authorization: `Bearer ${token}` } }
-      await axios.post('/api/acoes/interesse', { ticker: this.novaAcaoInteresse }, config)
+      await axios.post('http://localhost:3000/api/acoes/interesse', { ticker: this.novaAcaoInteresse }, config)
       this.showAdicionarAcao = false
       this.novaAcaoInteresse = ''
       await this.loadAcoesInteresse()
@@ -277,7 +278,7 @@ export default {
     async removerInteresse(ticker) {
       const token = localStorage.getItem('token')
       const config = { headers: { Authorization: `Bearer ${token}` } }
-      await axios.delete(`/api/acoes/interesse/${ticker}`, config)
+      await axios.delete(`http://localhost:3000/api/acoes/interesse/${ticker}`, config)
       await this.loadAcoesInteresse()
     },
     getNomeAcao(ticker) {
