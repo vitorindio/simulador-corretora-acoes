@@ -15,7 +15,7 @@ Este é um simulador de corretora de ações que permite aos usuários:
 
 - Backend: Node.js + Express
 - Banco de Dados: MySQL
-- Frontend: Vue.js 3 (a ser implementado)
+- Frontend: Vue.js 3 + Vite
 
 ## Requisitos
 
