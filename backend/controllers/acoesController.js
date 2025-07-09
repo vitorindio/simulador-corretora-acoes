@@ -137,11 +137,27 @@ const ordensUsuario = async (req, res) => {
   }
 }
 
+// GET /api/acoes?minuto=XX
+const listarAcoes = async (req, res) => {
+  try {
+    const minuto = req.query.minuto ? parseInt(req.query.minuto, 10) : null;
+    if (minuto === null || isNaN(minuto) || minuto < 0 || minuto > 59) {
+      return res.status(400).json({ message: 'Parâmetro minuto (0-59) é obrigatório na query string.' });
+    }
+    const acoes = await getAcoesComVariação({ tickers: [], minuto });
+    res.json({ acoes });
+  } catch (error) {
+    console.error('Erro ao buscar ações do mercado:', error);
+    res.status(500).json({ message: 'Erro ao buscar ações do mercado', error: error.message });
+  }
+};
+
 
 module.exports = {
   interesse,
   deletar,
   ordemTickerSobe,
   ordemTickerDesce,
-  ordensUsuario
+  ordensUsuario,
+  listarAcoes
 };
