@@ -48,6 +48,7 @@ const criarOrdemCompra = async (req, res) => {
 
 const executarOrdemCompra = async (req, res) => {
   try {
+    console.log('req.userId:', req.userId);
     const { id } = req.params;
     const id_usuario = req.userId;
     console.log(`Executando ordem de compra ${id} para usuário ${id_usuario}`);
@@ -111,7 +112,7 @@ const executarOrdemCompra = async (req, res) => {
           ordem.quantidade,
           preco_execucao
         );
-
+        
         await db.query(
           'UPDATE carteira SET qtde = qtde + ?, preco_compra = ? WHERE id_usuario = ?',
           [ordem.quantidade, novo_preco_medio, carteira.id]
