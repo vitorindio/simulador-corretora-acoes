@@ -61,7 +61,7 @@
           <div v-for="acao in carteira" :key="acao.id" class="acao-card">
             <div class="acao-header">
               <h4>{{ acao.ticker }}</h4>
-              <span class="acao-quantidade">{{ acao.quantidade }} ações</span>
+              <span class="acao-quantidade">{{ acao.qtde }} ações</span>
             </div>
             
             <div class="acao-info">
@@ -75,7 +75,7 @@
               </div>
               <div class="info-item">
                 <span class="label">Valor Total:</span>
-                <span class="value"> {{ formatCurrency(acao.quantidade * (acao.preco_atual || acao.preco_compra)) }}</span>
+                <span class="value"> {{ formatCurrency(acao.qtde * (acao.preco_atual || acao.preco_compra)) }}</span>
               </div>
             </div>
             
@@ -178,12 +178,12 @@ export default {
   computed: {
     totalInvestido() {
       return this.carteira.reduce((total, acao) => {
-        return total + (acao.quantidade * acao.preco_compra)
+        return total + (acao.qtde * acao.preco_compra)
       }, 0)
     },
     valorAtual() {
       return this.carteira.reduce((total, acao) => {
-        return total + (acao.quantidade * (acao.preco_atual || acao.preco_compra))
+        return total + (acao.qtde * (acao.preco_atual || acao.preco_compra))
       }, 0)
     },
     lucroPrejuizo() {
