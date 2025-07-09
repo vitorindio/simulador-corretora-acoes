@@ -210,7 +210,8 @@ export default {
       quantidadeCompra: 1,
       acoesDisponiveis: [],
       showAdicionarAcao: false,
-      acaoSelecionadaModal: null
+      acaoSelecionadaModal: null,
+      minutoSimulado: 0
     }
   },
   computed: {
@@ -246,6 +247,7 @@ export default {
     }
   },
   async mounted() {
+    this.carregarMinutoSimulado()
     await this.loadAcoesInteresse()
   },
   watch: {
@@ -256,6 +258,38 @@ export default {
     }
   },
   methods: {
+    // Função para decodificar o token JWT e obter o ID do usuário
+    obterUserId() {
+      try {
+        const token = localStorage.getItem('token')
+        if (!token) return null
+        
+        // JWT é dividido em 3 partes por pontos
+        const parts = token.split('.')
+        if (parts.length !== 3) return null
+        
+        // Decodifica a segunda parte (payload) que contém os dados do usuário
+        const payload = JSON.parse(atob(parts[1]))
+        return payload.id
+      } catch (error) {
+        console.error('Erro ao decodificar token:', error)
+        return null
+      }
+    },
+    
+    // Função para obter a chave do localStorage específica do usuário
+    obterChaveMinuto() {
+      const userId = this.obterUserId()
+      return userId ? `minutoSimulado_${userId}` : 'minutoSimulado'
+    },
+    
+    // Função para carregar o minuto simulado do localStorage
+    carregarMinutoSimulado() {
+      const chave = this.obterChaveMinuto()
+      const minutoSalvo = localStorage.getItem(chave)
+      this.minutoSimulado = minutoSalvo ? Number(minutoSalvo) : 0
+    },
+    
     async loadAcoesInteresse() {
       try {
         this.loading = true
@@ -265,10 +299,8 @@ export default {
         // Salva valores anteriores ANTES de buscar novos dados
         this.salvarValoresAnteriores()
         
-        // Busca o minuto simulado
-        const minuto = Number(localStorage.getItem('minutoSimulado')) || new Date().getMinutes()
         // Busca apenas as ações de interesse do usuário, passando o minuto
-        const response = await axios.get(`/api/acoes/interesse?minuto=${minuto}`, config)
+        const response = await axios.get(`/api/acoes/interesse?minuto=${this.minutoSimulado}`, config)
         this.acoesInteresse = [...response.data]
       } catch (error) {
         console.error('Erro ao carregar ações de interesse:', error)
@@ -357,7 +389,9 @@ export default {
       }
     },
     
-    onMinutoChange() {
+    onMinutoChange(minuto) {
+      // Atualiza o minuto simulado local
+      this.minutoSimulado = minuto
       // Recarrega as ações quando o minuto muda
       this.loadAcoesInteresse()
     },

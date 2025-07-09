@@ -16,7 +16,7 @@ export default {
   },
   data() {
     return {
-      minutoSimulado: Number(localStorage.getItem('minutoSimulado')) || new Date().getMinutes()
+      minutoSimulado: 0
     }
   },
   computed: {
@@ -26,11 +26,50 @@ export default {
       return `${baseHour}:${min}`;
     }
   },
+  mounted() {
+    this.carregarMinutoSimulado()
+  },
   methods: {
+    // Função para decodificar o token JWT e obter o ID do usuário
+    obterUserId() {
+      try {
+        const token = localStorage.getItem('token')
+        if (!token) return null
+        
+        // JWT é dividido em 3 partes por pontos
+        const parts = token.split('.')
+        if (parts.length !== 3) return null
+        
+        // Decodifica a segunda parte (payload) que contém os dados do usuário
+        const payload = JSON.parse(atob(parts[1]))
+        return payload.id
+      } catch (error) {
+        console.error('Erro ao decodificar token:', error)
+        return null
+      }
+    },
+    
+    // Função para obter a chave do localStorage específica do usuário
+    obterChaveMinuto() {
+      const userId = this.obterUserId()
+      return userId ? `minutoSimulado_${userId}` : 'minutoSimulado'
+    },
+    
+    // Função para carregar o minuto simulado do localStorage
+    carregarMinutoSimulado() {
+      const chave = this.obterChaveMinuto()
+      const minutoSalvo = localStorage.getItem(chave)
+      this.minutoSimulado = minutoSalvo ? Number(minutoSalvo) : 0
+    },
+    
     avancarMinuto(delta) {
       this.minutoSimulado = (this.minutoSimulado + delta) % 60
       if (this.minutoSimulado < 0) this.minutoSimulado += 60
-      localStorage.setItem('minutoSimulado', this.minutoSimulado)
+      
+      // Salva no localStorage com a chave específica do usuário
+      const chave = this.obterChaveMinuto()
+      localStorage.setItem(chave, this.minutoSimulado)
+      
       this.$emit('minuto-change', this.minutoSimulado)
       if (this.onMinutoChange) this.onMinutoChange(this.minutoSimulado)
     }

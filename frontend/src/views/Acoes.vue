@@ -240,7 +240,7 @@ export default {
       },
       criandoOrdem: false,
       ordemError: '',
-      minutoSimulado: Number(localStorage.getItem('minutoSimulado')) || 0
+      minutoSimulado: 0
     }
   },
   computed: {
@@ -280,11 +280,44 @@ export default {
     }
   },
   async mounted() {
+    this.carregarMinutoSimulado()
     await this.loadAcoesMercado()
     await this.loadAcoesInteresse()
     await this.loadTickersDisponiveis()
   },
   methods: {
+    // Função para decodificar o token JWT e obter o ID do usuário
+    obterUserId() {
+      try {
+        const token = localStorage.getItem('token')
+        if (!token) return null
+        
+        // JWT é dividido em 3 partes por pontos
+        const parts = token.split('.')
+        if (parts.length !== 3) return null
+        
+        // Decodifica a segunda parte (payload) que contém os dados do usuário
+        const payload = JSON.parse(atob(parts[1]))
+        return payload.id
+      } catch (error) {
+        console.error('Erro ao decodificar token:', error)
+        return null
+      }
+    },
+    
+    // Função para obter a chave do localStorage específica do usuário
+    obterChaveMinuto() {
+      const userId = this.obterUserId()
+      return userId ? `minutoSimulado_${userId}` : 'minutoSimulado'
+    },
+    
+    // Função para carregar o minuto simulado do localStorage
+    carregarMinutoSimulado() {
+      const chave = this.obterChaveMinuto()
+      const minutoSalvo = localStorage.getItem(chave)
+      this.minutoSimulado = minutoSalvo ? Number(minutoSalvo) : 0
+    },
+    
     async loadAcoesMercado() {
       try {
         this.loading = true
@@ -295,8 +328,7 @@ export default {
         this.salvarValoresAnteriores()
         
         // Carrega todas as ações do mercado com o minuto simulado
-        const minuto = Number(localStorage.getItem('minutoSimulado')) || new Date().getMinutes()
-        const response = await axios.get(`/api/acoes?minuto=${minuto}`, config)
+        const response = await axios.get(`/api/acoes?minuto=${this.minutoSimulado}`, config)
         this.acoesMercado = response.data
       } catch (error) {
         console.error('Erro ao carregar ações:', error)
@@ -462,10 +494,12 @@ export default {
     avancarMinuto(delta = 1) {
       this.minutoSimulado = (this.minutoSimulado + delta) % 60
       if (this.minutoSimulado < 0) this.minutoSimulado += 60
-      localStorage.setItem('minutoSimulado', this.minutoSimulado)
+      localStorage.setItem(this.obterChaveMinuto(), this.minutoSimulado)
       this.refreshAcoes()
     },
-    onMinutoChange() {
+    onMinutoChange(minuto) {
+      // Atualiza o minuto simulado local
+      this.minutoSimulado = minuto
       // Recarrega as ações quando o minuto muda
       this.loadAcoesMercado()
       // Também recarrega as ações de interesse
