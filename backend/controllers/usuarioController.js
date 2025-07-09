@@ -1,7 +1,13 @@
 const db = require('../config/database');
 
 // POST /api/usuario/atualizar-hora-negociacao
-const moment = require('moment'); // ou use Date padrão do JS
+// Função auxiliar para manipular horários sem dependência externa
+const addMinutesToTime = (timeString, minutes) => {
+  const [hours, minutesStr, seconds] = timeString.split(':').map(Number);
+  const date = new Date();
+  date.setHours(hours, minutesStr + minutes, seconds);
+  return date.toTimeString().slice(0, 8); // Retorna HH:mm:ss
+};
 
 const atualizarHoraNegociacao = async (req, res) => {
   try {
@@ -25,9 +31,7 @@ const atualizarHoraNegociacao = async (req, res) => {
     const horaAtual = rows[0].ultima_hora_negociacao;
 
     // Avança os minutos
-    const novaHora = moment(horaAtual, 'HH:mm:ss')
-      .add(incrementoMinutos, 'minutes')
-      .format('HH:mm:ss');
+    const novaHora = addMinutesToTime(horaAtual, incrementoMinutos);
 
     // Atualiza no banco
     await db.query(

@@ -300,15 +300,23 @@ const executarOrdemVenda = async (req, res) => {
 
       // Atualiza quantidade e registra venda
       await db.query(
-        'UPDATE carteira SET qtde = qtde - ?, qtde_vendido = qtde_vendido + ?, preco_venda = ? WHERE id_usuario = ?',
-        [ordem.quantidade, ordem.quantidade, preco_execucao, carteira.id]
+        'UPDATE carteira SET qtde = qtde - ?, qtde_vendido = qtde_vendido + ?, preco_venda = ? WHERE id_usuario = ? AND ticker = ?',
+        [ordem.quantidade, ordem.quantidade, preco_execucao, id_usuario, ordem.ticker]
       );
 
-      // Registra movimentação na conta
+      // Buscar saldo anterior
+      const [ultimoLanc] = await db.query(
+        'SELECT saldo FROM conta_corrente WHERE id_usuario = ? ORDER BY data_hora DESC, id DESC LIMIT 1',
+        [id_usuario]
+      );
+      const saldoAnterior = ultimoLanc.length > 0 ? Number(ultimoLanc[0].saldo) : 0;
       const valor_total = ordem.quantidade * preco_execucao;
+      const novoSaldo = saldoAnterior + valor_total;
+
+      // Registra movimentação na conta corrente como depósito
       await db.query(
-        'INSERT INTO conta_corrente (id_usuario, historico, data_hora, valor) VALUES (?, ?, NOW(), ?)',
-        [id_usuario, `Venda ${ordem.ticker}`, valor_total]
+        'INSERT INTO conta_corrente (id_usuario, historico, data_hora, tipo, valor, saldo) VALUES (?, ?, NOW(), ?, ?, ?)',
+        [id_usuario, `Venda ${ordem.ticker}`, 'deposito', valor_total, novoSaldo]
       );
 
       res.json({ 

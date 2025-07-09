@@ -61,7 +61,7 @@
           <div v-for="acao in carteira" :key="acao.id" class="acao-card">
             <div class="acao-header">
               <h4>{{ acao.ticker }}</h4>
-              <span class="acao-quantidade">{{ acao.qtde }} ações</span>
+              <span class="acao-quantidade">{{ acao.qtde || acao.quantidade }} ações</span>
             </div>
             
             <div class="acao-info">
@@ -75,7 +75,7 @@
               </div>
               <div class="info-item">
                 <span class="label">Valor Total:</span>
-                <span class="value"> {{ formatCurrency(acao.qtde * (acao.preco_atual || acao.preco_compra)) }}</span>
+                <span class="value"> {{ formatCurrency((acao.qtde || acao.quantidade) * (acao.preco_atual || acao.preco_compra)) }}</span>
               </div>
             </div>
             
@@ -172,14 +172,14 @@ export default {
       },
       criandoOrdem: false,
       ordemError: '',
-      minutoSimulado: Number(localStorage.getItem('minutoSimulado')) || 0
+      minutoSimulado: Number(localStorage.getItem('minutoSimulado')) || 0,
+      totalInvestidoFromAPI: 0
     }
   },
   computed: {
     totalInvestido() {
-      return this.carteira.reduce((total, acao) => {
-        return total + (acao.qtde * acao.preco_compra)
-      }, 0)
+      // Usar o total investido calculado baseado nas ordens executadas
+      return this.totalInvestidoFromAPI || 0
     },
     valorAtual() {
       return this.carteira.reduce((total, acao) => {
@@ -199,7 +199,9 @@ export default {
       this.loading = true
       const token = localStorage.getItem('token')
       const config = { headers: { Authorization: `Bearer ${token}` } }
-      const response = await axios.get(`http://localhost:3000/api/carteira?minuto=${this.minutoSimulado}`, config)
+      const response = await axios.get(`/api/carteira?minuto=${this.minutoSimulado}`, config)
+      console.log('Dados da carteira recebidos:', response.data) // Debug
+      
       // Mapeia os campos do backend para os nomes esperados no frontend
       this.carteira = response.data.map(acao => ({
         ...acao,
@@ -207,6 +209,20 @@ export default {
         preco_compra: acao.preco_compra ?? 0,
         preco_atual: acao.preco_atual ?? 0
       }))
+      
+      console.log('Carteira processada:', this.carteira) // Debug
+      
+      // Carregar total investido baseado nas ordens executadas
+      try {
+        const totalInvestidoResponse = await axios.get('/api/carteira/total-investido', config)
+        console.log('Total investido da API:', totalInvestidoResponse.data) // Debug
+        this.totalInvestidoFromAPI = totalInvestidoResponse.data.total_liquido || 0
+      } catch (error) {
+        console.error('Erro ao carregar total investido:', error)
+        this.totalInvestidoFromAPI = 0
+      }
+      
+      console.log('Total investido final:', this.totalInvestido) // Debug
       this.loading = false
     },
 
@@ -217,7 +233,7 @@ export default {
           headers: { Authorization: `Bearer ${token}` }
         }
         const minuto = Number(localStorage.getItem('minutoSimulado')) || new Date().getMinutes();
-        const response = await axios.get(`http://localhost:3000/api/acoes?minuto=${minuto}`, config)
+        const response = await axios.get(`/api/acoes?minuto=${minuto}`, config)
         this.acoesDisponiveis = response.data.acoes
       } catch (error) {
         console.error('Erro ao carregar ações:', error)
@@ -244,7 +260,7 @@ export default {
           ordemData.preco_referencia = parseFloat(this.novaOrdem.preco_referencia)
         }
 
-        await axios.post('http://localhost:3000/api/ordens/compra', ordemData, config)
+        await axios.post('/api/ordens/compra', ordemData, config)
         
         this.showNovaOrdem = false
         this.novaOrdem = {
@@ -269,16 +285,16 @@ export default {
     },
 
     async vender(acao) {
-      if (confirm(`Deseja vender ${acao.quantidade} ações de ${acao.ticker}?`)) {
+      if (confirm(`Deseja vender ${acao.qtde || acao.quantidade} ações de ${acao.ticker}?`)) {
         try {
           const token = localStorage.getItem('token')
           const config = {
             headers: { Authorization: `Bearer ${token}` }
           }
 
-          await axios.post('http://localhost:3000/api/ordens/venda', {
+          await axios.post('/api/ordens/venda', {
             ticker: acao.ticker,
-            quantidade: acao.quantidade,
+            quantidade: acao.qtde || acao.quantidade,
             modo: 'mercado'
           }, config)
 

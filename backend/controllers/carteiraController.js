@@ -62,7 +62,45 @@ const listarCarteira = async (req, res) => {
   }
 };
 
+// GET /api/carteira/total-investido
+const getTotalInvestido = async (req, res) => {
+  try {
+    const id_usuario = req.userId;
+    
+    // Calcula total investido baseado nas ordens executadas
+    const [ordensExecutadas] = await db.query(`
+      SELECT 
+        SUM(quantidade * preco_execucao) as total_investido,
+        COUNT(*) as total_ordens
+      FROM ordem_compra 
+      WHERE id_usuario = ? AND executada = true
+    `, [id_usuario]);
+
+    const [vendasExecutadas] = await db.query(`
+      SELECT 
+        SUM(quantidade * preco_execucao) as total_vendido
+      FROM ordem_venda 
+      WHERE id_usuario = ? AND executada = true
+    `, [id_usuario]);
+
+    const totalInvestido = Number(ordensExecutadas[0]?.total_investido || 0);
+    const totalVendido = Number(vendasExecutadas[0]?.total_vendido || 0);
+    const totalLiquido = totalInvestido - totalVendido;
+
+    res.json({
+      total_investido: totalInvestido,
+      total_vendido: totalVendido,
+      total_liquido: totalLiquido,
+      total_ordens: ordensExecutadas[0]?.total_ordens || 0
+    });
+  } catch (error) {
+    console.error('Erro ao calcular total investido:', error);
+    res.status(500).json({ message: 'Erro interno do servidor' });
+  }
+};
+
 // CORRETA exportação
 module.exports = {
-  listarCarteira
+  listarCarteira,
+  getTotalInvestido
 };
