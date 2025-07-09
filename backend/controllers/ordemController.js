@@ -11,8 +11,7 @@ const calcularPrecoMedio = (quantidadeAtual, precoAtual, quantidadeNova, precoNo
 const criarOrdemCompra = async (req, res) => {
   try {
     const { ticker, quantidade, modo, preco_referencia } = req.body;
-    //const id_usuario = req.userId;
-    const id_usuario = 1;
+    const id_usuario = req.userId;
 
     // Validações básicas
     if (!ticker || !quantidade || !modo) {
@@ -99,7 +98,7 @@ const executarOrdemCompra = async (req, res) => {
       if (carteiras.length === 0) {
         // Nova posição
         await db.query(
-          'INSERT INTO carteira (id_usuario, ticker, quantidade, preco_compra) VALUES (?, ?, ?, ?)',
+          'INSERT INTO carteira (id_usuario, ticker, qtde, preco_compra) VALUES (?, ?, ?, ?)',
           [id_usuario, ordem.ticker, ordem.quantidade, preco_execucao]
         );
       } else {
@@ -113,7 +112,7 @@ const executarOrdemCompra = async (req, res) => {
         );
 
         await db.query(
-          'UPDATE carteira SET quantidade = quantidade + ?, preco_compra = ? WHERE id = ?',
+          'UPDATE carteira SET qtde = qtde + ?, preco_compra = ? WHERE id_usuario = ?',
           [ordem.quantidade, novo_preco_medio, carteira.id]
         );
       }

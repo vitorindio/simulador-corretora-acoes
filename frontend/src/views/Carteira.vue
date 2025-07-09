@@ -26,16 +26,16 @@
       <div class="carteira-resumo">
         <div class="resumo-card">
           <h3>Total Investido</h3>
-          <p class="resumo-valor">R$ {{ formatCurrency(totalInvestido) }}</p>
+          <p class="resumo-valor"> {{ formatCurrency(totalInvestido) }}</p>
         </div>
         <div class="resumo-card">
           <h3>Valor Atual</h3>
-          <p class="resumo-valor">R$ {{ formatCurrency(valorAtual) }}</p>
+          <p class="resumo-valor"> {{ formatCurrency(valorAtual) }}</p>
         </div>
         <div class="resumo-card">
           <h3>Lucro/Prejuízo</h3>
           <p class="resumo-valor" :class="lucroPrejuizo >= 0 ? 'positive' : 'negative'">
-            {{ lucroPrejuizo >= 0 ? '+' : '' }}R$ {{ formatCurrency(lucroPrejuizo) }}
+            {{ lucroPrejuizo >= 0 ? '+' : '' }} {{ formatCurrency(lucroPrejuizo) }}
           </p>
         </div>
         <div class="resumo-card">
@@ -67,15 +67,15 @@
             <div class="acao-info">
               <div class="info-item">
                 <span class="label">Preço Médio:</span>
-                <span class="value">R$ {{ formatCurrency(acao.preco_compra) }}</span>
+                <span class="value"> {{ formatCurrency(acao.preco_compra) }}</span>
               </div>
               <div class="info-item">
                 <span class="label">Preço Atual:</span>
-                <span class="value">R$ {{ formatCurrency(acao.preco_atual || acao.preco_compra) }}</span>
+                <span class="value"> {{ formatCurrency(acao.preco_atual || acao.preco_compra) }}</span>
               </div>
               <div class="info-item">
                 <span class="label">Valor Total:</span>
-                <span class="value">R$ {{ formatCurrency(acao.quantidade * (acao.preco_atual || acao.preco_compra)) }}</span>
+                <span class="value"> {{ formatCurrency(acao.quantidade * (acao.preco_atual || acao.preco_compra)) }}</span>
               </div>
             </div>
             
