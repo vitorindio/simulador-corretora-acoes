@@ -300,7 +300,7 @@ const executarOrdemVenda = async (req, res) => {
 
       // Atualiza quantidade e registra venda
       await db.query(
-        'UPDATE carteira SET qtde = qtde - ?, qtde_vendido = qtde_vendido + ?, preco_venda = ? WHERE id = ?',
+        'UPDATE carteira SET qtde = qtde - ?, qtde_vendido = qtde_vendido + ?, preco_venda = ? WHERE id_usuario = ?',
         [ordem.quantidade, ordem.quantidade, preco_execucao, carteira.id]
       );
 
