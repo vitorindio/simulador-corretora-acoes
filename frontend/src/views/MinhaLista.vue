@@ -261,13 +261,15 @@ export default {
         this.loading = true
         const token = localStorage.getItem('token')
         const config = { headers: { Authorization: `Bearer ${token}` } }
-
+        
         // Salva valores anteriores ANTES de buscar novos dados
         this.salvarValoresAnteriores()
-
-        // Busca apenas as ações de interesse do usuário
-        const response = await axios.get('/api/acoes/interesse', config)
-        this.acoesInteresse = response.data
+        
+        // Busca o minuto simulado
+        const minuto = Number(localStorage.getItem('minutoSimulado')) || new Date().getMinutes()
+        // Busca apenas as ações de interesse do usuário, passando o minuto
+        const response = await axios.get(`/api/acoes/interesse?minuto=${minuto}`, config)
+        this.acoesInteresse = [...response.data]
       } catch (error) {
         console.error('Erro ao carregar ações de interesse:', error)
         alert('Erro ao carregar sua lista de interesse')
@@ -403,14 +405,17 @@ export default {
     },
     
     salvarValoresAnteriores() {
-      // Só salva se já existem ações carregadas
-      this.acoesInteresse.forEach(acao => {
-        this.acoesAnteriores[acao.ticker] = {
-          preco_atual: acao.preco_atual,
-          variacao_nominal: acao.variacao_nominal,
-          variacao_percentual: acao.variacao_percentual
-        }
-      })
+      const anteriores = {}
+      if (this.acoesInteresse && this.acoesInteresse.length > 0) {
+        this.acoesInteresse.forEach(acao => {
+          anteriores[acao.ticker] = {
+            preco_atual: acao.preco_atual,
+            variacao_nominal: acao.variacao_nominal,
+            variacao_percentual: acao.variacao_percentual
+          }
+        })
+      }
+      this.acoesAnteriores = anteriores
     },
     
     async carregarAcoesDisponiveis() {
